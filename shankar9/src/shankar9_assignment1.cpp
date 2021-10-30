@@ -29,6 +29,7 @@
 #include <map>
 #include <cstring>
 #include <netdb.h>
+#include <unistd.h>
 
 #include "../include/global.h"
 #include "../include/logger.h"
@@ -114,7 +115,7 @@ void server (int port) {
     hints.ai_flags = AI_PASSIVE;
 
     /* Fill up address structures */
-    if (getaddrinfo(NULL, argv[1], &hints, &res) != 0)
+    if (getaddrinfo(NULL, port, &hints, &res) != 0)
         perror("getaddrinfo failed");
 
     /* Socket */
@@ -174,7 +175,7 @@ void server (int port) {
                             exit(-1);
 
                         // Need to use strtok() to parse the command and arguments separately
-                        char *command = strtok(cstr, " ");
+                        char *command = strtok(cmd, " ");
                         cout << "Command = " << command << endl;
                         // Check command & invoke the apt method below
                         if (!strcmp(command, "AUTHOR")) {
@@ -200,7 +201,7 @@ void server (int port) {
                     /* Check if new client is requesting connection */
                     else if (sock_index == server_socket) {
                         caddr_len = sizeof(client_addr);
-                        fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, &caddr_len);
+                        fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t *)&caddr_len);
                         if (fdaccept < 0)
                             perror("Accept failed.");
 
