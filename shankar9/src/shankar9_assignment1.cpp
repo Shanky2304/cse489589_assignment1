@@ -48,8 +48,8 @@ bool mode;
 
 void print_author_statement();
 void print_ip_address();
-void server (int port);
-void client (int port);
+void server (char* port);
+void client (char* port);
 
 /**
  * main function
@@ -74,11 +74,11 @@ int main(int argc, char **argv)
     if (*argv[1] == 's') {
         // server mode
         mode = 1;
-        server(atoi(argv[2]));
+        server(argv[2]);
     } else if (*argv[1] == 'c') {
         // client mode
         mode = 0;
-        client(atoi(argv[2]));
+        client(argv[2]);
     } else {
         perror("Invalid mode!. Acceptable modes server(s) or client(c).");
         return -1;
@@ -100,7 +100,7 @@ constexpr unsigned int hash_val(const char* str, int h = 0)
     return !str[h] ? 5381 : (hash_val(str, h+1)*33) ^ str[h];
 }
 
-void server (int port) {
+void server (char* port) {
 
     int yes=1; // For setsockopt
     int server_socket, head_socket, selret, sock_index, fdaccept=0, caddr_len;
@@ -184,7 +184,7 @@ void server (int port) {
                             print_ip_address();
                         } else if (!strcmp(command, "PORT")) {
                             cse4589_print_and_log("[%s:SUCCESS]\n", command);
-                            cse4589_print_and_log("PORT:%d\n", port);
+                            cse4589_print_and_log("PORT:%c\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
                             // TODO: Handle LIST command
@@ -241,7 +241,7 @@ void server (int port) {
     }
 }
 
-void client (int port) {
+void client (char* port) {
     string command_str;
     while (1) {
         cout<<"[PA1-Client@CSE489/589]$ ";
@@ -257,7 +257,7 @@ void client (int port) {
             print_ip_address();
         } else if (!strcmp(command, "PORT")) {
             cse4589_print_and_log("[%s:SUCCESS]\n", command);
-            cse4589_print_and_log("PORT:%d\n", port);
+            cse4589_print_and_log("PORT:%c\n", port);
             cse4589_print_and_log("[%s:END]\n", command);
         } else if (!strcmp(command, "LIST")) {
 
