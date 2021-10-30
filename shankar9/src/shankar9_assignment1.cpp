@@ -136,13 +136,15 @@ void server (int port) {
             print_author_statement();
         } else if (!strcmp(command, "IP")) {
             print_ip_address();
-        } else if (command == "PORT") {
+        } else if (!strcmp(command, "PORT")) {
+            cse4589_print_and_log("[%s:SUCCESS]\n", command);
+            cse4589_print_and_log("PORT:%d\n", port);
+            cse4589_print_and_log("[%s:END]\n", command);
+        } else if (!strcmp(command, "LIST")) {
 
-        } else if (command == "LIST") {
+        } else if (!strcmp(command, "STATISTICS")) {
 
-        } else if (command == "STATISTICS") {
-
-        } else if (command == "BLOCKED") {
+        } else if (!strcmp(command, "BLOCKED")) {
             // Need to figure out how to work with 2nd argument here maybe strtok()
         } else {
             // Unidentified command
@@ -151,57 +153,49 @@ void server (int port) {
     }
 }
 
-//void client (int port) {
-//
-//    std::map<std::string, Client_Commands> string_ClientCommand_map;
-//    populate_ClientCommand_map(string_ClientCommand_map);
-//
-//    string command;
-//    while (1) {
-//        cout<<"[PA1-Client@CSE489/589]$ ";
-//        cin.getline(command, _MAX_PATH);
-//        // Need to use strtok() to parse the command and arguments separately
-//        switch (hash(command))  {
-//            case hash("AUTHOR"):
-//                print_author_statement();
-//                break;
-//            case hash("IP"):
-//                print_ip_address();
-//                break;
-//            case hash("PORT"):
-//                char command_str[] = "PORT";
-//                cse4589_print_and_log("[%s:SUCCESS]\n", command_str);
-//                cse4589_print_and_log("PORT:%d\n", port);
-//                cse4589_print_and_log("[%s:END]\n", command_str);
-//                break;
-//            case hash("LIST"):
-//                break;
-//            case hash("LOGIN"):
-//                // Need to extract just the first string from command and parse the other 2 here
-//                break;
-//            case hash("REFRESH"):
-//                break;
-//            case hash("SEND"):
-//                break;
-//            case hash("BROADCAST"):
-//                break;
-//            case hash("BLOCK"):
-//                break;
-//            case hash("UNBLOCK"):
-//                break;
-//            case hash("LOGOUT"):
-//                break;
-//            case hash("EXIT"):
-//                // Logout if logged-in
-//                exit(0);
-//                break;
-//            default:
-//                // Unidentified command
-//                cout<<"Unidentified command, ignoring...";
-//        }
-//    }
-//
-//}
+void client (int port) {
+    string command_str;
+    while (1) {
+        cout<<"[PA1-Client@CSE489/589]$ ";
+        getline(cin, command_str);
+        char *cstr = new char[command_str.length() + 1];
+        strcpy(cstr, command_str.c_str());
+        // Need to use strtok() to parse the command and arguments separately
+        char *command = strtok(cstr, " ");
+        cout<<"Command = "<<command<<endl;
+        if (!strcmp(command, "AUTHOR")) {
+            print_author_statement();
+        } else if (!strcmp(command, "IP")) {
+            print_ip_address();
+        } else if (!strcmp(command, "PORT")) {
+            cse4589_print_and_log("[%s:SUCCESS]\n", command);
+            cse4589_print_and_log("PORT:%d\n", port);
+            cse4589_print_and_log("[%s:END]\n", command);
+        } else if (!strcmp(command, "LIST")) {
+
+        } else if (!strcmp(command, "LOGIN")) {
+            // Need to extract just the first string from command and parse the other 2 here
+        } else if (!strcmp(command, "REFRESH")) {
+
+        } else if (!strcmp(command, "SEND")) {
+
+        } else if (!strcmp(command, "BROADCAST")) {
+
+        } else if (!strcmp(command, "BLOCK")) {
+
+        } else if (!strcmp(command, "UNBLOCK")) {
+
+        } else if (!strcmp(command, "LOGOUT")) {
+
+        } else if (!strcmp(command, "EXIT")) {
+            // Logout if logged-in
+            exit(0);
+        } else {
+            // Unidentified command
+            cout<<"Unidentified command, ignoring..."<<endl;
+        }
+    }
+}
 
 void print_author_statement() {
     char author[] = "shankar9";
