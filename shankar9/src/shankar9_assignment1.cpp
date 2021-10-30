@@ -123,33 +123,29 @@ constexpr unsigned int hash_val(const char* str, int h = 0)
 }
 
 void server (int port) {
-    char *command;
+    string command_str;
     while (1) {
-        cout<<"[PA1-Server@CSE489/589]$ ";
-        cin.getline(command, _MAX_PATH);
+        cout << "[PA1-Server@CSE489/589]$ ";
+        cin.getline(command_str, _MAX_PATH);
         // Need to use strtok() to parse the command and arguments separately
-        switch (hash_val(command))  {
-            case hash_val("AUTHOR"):
-                print_author_statement();
-                break;
-            case hash_val("IP"):
-                print_ip_address();
-                break;
-            case hash_val("PORT"):
-                break;
-            case hash_val("LIST"):
-                break;
-            case hash_val("STATISTICS"):
-                break;
-            case hash_val("BLOCKED"):
-                // Need to figure out how to work with 2nd argument here maybe strtok()
-                break;
-            default:
-                // Unidentified command
-                cout<<"Unidentified command, ignoring...";
+        char *command = strtok(command_str, " ");
+        if (command == "AUTHOR") {
+            print_author_statement();
+        } else if (command == "IP") {
+            print_ip_address();
+        } else if (command == "PORT") {
+
+        } else if (command == "LIST") {
+
+        } else if (command == "STATISTICS") {
+
+        } else if (command == "BLOCKED") {
+            // Need to figure out how to work with 2nd argument here maybe strtok()
+        } else {
+            // Unidentified command
+            cout << "Unidentified command, ignoring...";
         }
     }
-
 }
 
 //void client (int port) {
