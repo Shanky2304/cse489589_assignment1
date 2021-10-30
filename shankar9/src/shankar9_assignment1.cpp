@@ -35,37 +35,15 @@
 
 #define DNS_IP "8.8.8.8"
 #define DNS_PORT "53"
-#define _MAX_PATH 256
+#define BACKLOG 5
+#define STDIN 0
+#define TRUE 1
+#define CMD_SIZE 100
+#define BUFFER_SIZE 256
 
 using namespace std;
 // "1" in server mode, "0" in client mode
 bool mode;
-
-//enum Server_Commands {
-//    AUTHOR = 1,
-//    IP = 2,
-//    PORT = 3,
-//    LIST = 4,
-//    STATISTICS = 5,
-//    BLOCKED = 6
-//};
-//
-//enum Client_Commands {
-//    CLIENT_AUTHOR = 1,
-//    CLIENT_IP = 2,
-//    CLIENT_PORT = 3,
-//    CLIENT_LIST = 4,
-//    LOGIN = 5,
-//    REFRESH = 6,
-//    SEND = 7,
-//    BROADCAST = 8,
-//    BLOCK = 9,
-//    UNBLOCK = 10,
-//    LOGOUT = 11,
-//    EXIT = 12
-//};
-
-
 
 void print_author_statement();
 void print_ip_address();
@@ -91,7 +69,6 @@ int main(int argc, char **argv)
     /* Clear LOGFILE*/
     fclose(fopen(LOGFILE, "w"));
     /*Start Here*/
-    int yes=1;
 
     if (*argv[1] == 's') {
         // server mode
@@ -123,32 +100,142 @@ constexpr unsigned int hash_val(const char* str, int h = 0)
 }
 
 void server (int port) {
+
+    int yes=1; // For setsockopt
+    int server_socket, head_socket, selret, sock_index, fdaccept=0, caddr_len;
+    struct sockaddr_in client_addr;
+    struct addrinfo hints, *res;
+    fd_set master_list, watch_list;
+
+    /* Set up hints structure */
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    /* Fill up address structures */
+    if (getaddrinfo(NULL, argv[1], &hints, &res) != 0)
+        perror("getaddrinfo failed");
+
+    /* Socket */
+    server_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if(server_socket < 0)
+        perror("Cannot create socket");
+
+    // Gets rid of socket in use error
+    setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+
+    /* Bind */
+    if(bind(server_socket, res->ai_addr, res->ai_addrlen) < 0 )
+        perror("Bind failed");
+
+    freeaddrinfo(res);
+
+    /* Listen */
+    if(listen(server_socket, BACKLOG) < 0)
+        perror("Unable to listen on port");
+
+    /* Zero select FD sets */
+    FD_ZERO(&master_list);
+    FD_ZERO(&watch_list);
+
+    /* Register the listening socket */
+    FD_SET(server_socket, &master_list);
+    /* Register STDIN */
+    FD_SET(STDIN, &master_list);
+
+    head_socket = server_socket;
     string command_str;
+
     while (1) {
+        memcpy(&watch_list, &master_list, sizeof(master_list));
+
         cout << "[PA1-Server@CSE489/589]$ ";
-        getline(cin, command_str);
-        char *cstr = new char[command_str.length() + 1];
-        strcpy(cstr, command_str.c_str());
-        // Need to use strtok() to parse the command and arguments separately
-        char *command = strtok(cstr, " ");
-        cout<<"Command = "<<command<<endl;
-        if (!strcmp(command, "AUTHOR")) {
-            print_author_statement();
-        } else if (!strcmp(command, "IP")) {
-            print_ip_address();
-        } else if (!strcmp(command, "PORT")) {
-            cse4589_print_and_log("[%s:SUCCESS]\n", command);
-            cse4589_print_and_log("PORT:%d\n", port);
-            cse4589_print_and_log("[%s:END]\n", command);
-        } else if (!strcmp(command, "LIST")) {
 
-        } else if (!strcmp(command, "STATISTICS")) {
+        /* select() system call. This will BLOCK */
+        selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
+        if(selret < 0)
+            perror("select failed.");
 
-        } else if (!strcmp(command, "BLOCKED")) {
-            // Need to figure out how to work with 2nd argument here maybe strtok()
-        } else {
-            // Unidentified command
-            cout << "Unidentified command, ignoring..."<<endl;
+        /* Check if we have sockets/STDIN to process */
+        if(selret > 0) {
+            /* Loop through socket descriptors to check which ones are ready */
+            for (sock_index = 0; sock_index <= head_socket; sock_index += 1) {
+
+                if (FD_ISSET(sock_index, &watch_list)) {
+
+                    /* Check if new command on STDIN */
+                    if (sock_index == STDIN) {
+                        char *cmd = (char *) malloc(sizeof(char) * CMD_SIZE);
+
+                        memset(cmd, '\0', CMD_SIZE);
+                        if (fgets(cmd, CMD_SIZE - 1, stdin) ==
+                            NULL) //Mind the newline character that will be written to cmd
+                            exit(-1);
+
+                        // Need to use strtok() to parse the command and arguments separately
+                        char *command = strtok(cstr, " ");
+                        cout << "Command = " << command << endl;
+                        // Check command & invoke the apt method below
+                        if (!strcmp(command, "AUTHOR")) {
+                            print_author_statement();
+                        } else if (!strcmp(command, "IP")) {
+                            print_ip_address();
+                        } else if (!strcmp(command, "PORT")) {
+                            cse4589_print_and_log("[%s:SUCCESS]\n", command);
+                            cse4589_print_and_log("PORT:%d\n", port);
+                            cse4589_print_and_log("[%s:END]\n", command);
+                        } else if (!strcmp(command, "LIST")) {
+                            // TODO: Handle LIST command
+                        } else if (!strcmp(command, "STATISTICS")) {
+                            // TODO: Handle STATISTICS command
+                        } else if (!strcmp(command, "BLOCKED")) {
+                            // Need to figure out how to work with 2nd argument here maybe strtok()
+                        } else {
+                            // Unidentified command
+                            cout << "Unidentified command, ignoring..." << endl;
+                        }
+                        free(cmd);
+                    }
+                    /* Check if new client is requesting connection */
+                    else if (sock_index == server_socket) {
+                        caddr_len = sizeof(client_addr);
+                        fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, &caddr_len);
+                        if (fdaccept < 0)
+                            perror("Accept failed.");
+
+                        printf("\nRemote Host connected!\n");
+
+                        /* Add to watched socket list */
+                        FD_SET(fdaccept, &master_list);
+                        if (fdaccept > head_socket) head_socket = fdaccept;
+                    }
+                    /* Read from existing clients */
+                    else {
+                        /* Initialize buffer to receieve response */
+                        char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
+                        memset(buffer, '\0', BUFFER_SIZE);
+
+                        if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0) {
+                            close(sock_index);
+                            printf("Remote Host terminated sockaddrtion!\n");
+
+                            /* Remove from watched list */
+                            FD_CLR(sock_index, &master_list);
+                        } else {
+                            //Process incoming data from existing clients here ...
+
+                            printf("\nClient sent me: %s\n", buffer);
+                            printf("ECHOing it back to the remote host ... ");
+                            if (send(fdaccept, buffer, strlen(buffer), 0) == strlen(buffer))
+                                printf("Done!\n");
+                            fflush(stdout);
+                        }
+
+                        free(buffer);
+                    }
+                }
+            }
         }
     }
 }
