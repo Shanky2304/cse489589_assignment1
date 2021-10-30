@@ -126,12 +126,15 @@ void server (int port) {
     string command_str;
     while (1) {
         cout << "[PA1-Server@CSE489/589]$ ";
-        cin.getline(command_str, _MAX_PATH);
+        getline(cin, command_str);
+        char *cstr = new char[command_str.length() + 1];
+        strcpy(cstr, command_str.c_str());
         // Need to use strtok() to parse the command and arguments separately
-        char *command = strtok(command_str, " ");
-        if (command == "AUTHOR") {
+        char *command = strtok(cstr, " ");
+        cout<<"Command = "<<command<<endl;
+        if (!strcmp(command, "AUTHOR")) {
             print_author_statement();
-        } else if (command == "IP") {
+        } else if (!strcmp(command, "IP")) {
             print_ip_address();
         } else if (command == "PORT") {
 
@@ -143,7 +146,7 @@ void server (int port) {
             // Need to figure out how to work with 2nd argument here maybe strtok()
         } else {
             // Unidentified command
-            cout << "Unidentified command, ignoring...";
+            cout << "Unidentified command, ignoring..."<<endl;
         }
     }
 }
