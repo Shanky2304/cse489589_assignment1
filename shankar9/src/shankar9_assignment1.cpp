@@ -100,7 +100,7 @@ int main(int argc, char **argv)
     } else if (*argv[1] == 'c') {
         // client mode
         mode = 0;
-        //client(atoi(argv[2]));
+        client(atoi(argv[2]));
     } else {
         perror("Invalid mode!. Acceptable modes server(s) or client(c).");
         return -1;
