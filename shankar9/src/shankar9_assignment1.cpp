@@ -117,21 +117,24 @@ void server (char* port) {
     /* Fill up address structures */
     if (getaddrinfo(NULL, port, &hints, &res) != 0)
         perror("getaddrinfo failed");
-
+    
     /* Socket */
     server_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if(server_socket < 0)
         perror("Cannot create socket");
-
+    
     // Gets rid of socket in use error
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-
+    
     /* Bind */
     if(bind(server_socket, res->ai_addr, res->ai_addrlen) < 0 )
         perror("Bind failed");
-
+    
     freeaddrinfo(res);
-
+    //cout<<"Can print here4!"<<endl;
+    //cout<<"[PA1-Server@CSE489/589]$ ";
+    //cout<<"[PA1-Server@CSE489/589]$ ";
+	
     /* Listen */
     if(listen(server_socket, BACKLOG) < 0)
         perror("Unable to listen on port");
@@ -151,8 +154,8 @@ void server (char* port) {
     while (1) {
         memcpy(&watch_list, &master_list, sizeof(master_list));
 
-        cout << "[PA1-Server@CSE489/589]$ ";
-
+        cout<<"[PA1-Server@CSE489/589]$ ";
+        cout.flush();
         /* select() system call. This will BLOCK */
         selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
         if(selret < 0)
@@ -173,10 +176,11 @@ void server (char* port) {
                         if (fgets(cmd, CMD_SIZE - 1, stdin) ==
                             NULL) //Mind the newline character that will be written to cmd
                             exit(-1);
-
+			cmd[strcspn(cmd, "\n")] = 0;
                         // Need to use strtok() to parse the command and arguments separately
                         char *command = strtok(cmd, " ");
-                        cout << "Command = " << command << endl;
+                        cout <<"Command = " << command<< endl;
+                        cout.flush();
                         // Check command & invoke the apt method below
                         if (!strcmp(command, "AUTHOR")) {
                             print_author_statement();
@@ -184,7 +188,7 @@ void server (char* port) {
                             print_ip_address();
                         } else if (!strcmp(command, "PORT")) {
                             cse4589_print_and_log("[%s:SUCCESS]\n", command);
-                            cse4589_print_and_log("PORT:%c\n", port);
+                            cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
                             // TODO: Handle LIST command
