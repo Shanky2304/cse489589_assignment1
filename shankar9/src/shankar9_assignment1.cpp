@@ -18,7 +18,8 @@
  *
  * @section DESCRIPTION
  *
- * This contains the main function. Add further description here....
+ * Took references from -
+ * https://github.com/vaibhavchincholkar/CSE-489-589-Modern-Networking-Concepts/blob/master/cse489589_assignment1/vchincho/src/vchincho_assignment1.c
  */
 #include <iostream>
 #include <stdio.h>
@@ -26,7 +27,6 @@
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <map>
 #include <cstring>
 #include <netdb.h>
 #include <unistd.h>
@@ -46,10 +46,22 @@ using namespace std;
 // "1" in server mode, "0" in client mode
 bool mode;
 
+// Socket used by the client
+int client_socket;
+
 void print_author_statement();
+
 void print_ip_address();
-void server (char* port);
-void client (char* port);
+
+void server(char *port);
+
+void client(char *port);
+
+int connect_to_host(char *server_ip, char *server_port);
+
+bool socket_bind(int client_port);
+
+bool isvalidIP(char *ip);
 
 /**
  * main function
@@ -58,10 +70,9 @@ void client (char* port);
  * @param  argv The argument list
  * @return 0 EXIT_SUCCESS
  */
-int main(int argc, char **argv)
-{
-    if(argc != 3) {
-        cout<<"Usage: [./assignment1] [mode] [port]"<<endl;
+int main(int argc, char **argv) {
+    if (argc != 3) {
+        cout << "Usage: [./assignment1] [mode] [port]" << endl;
         return -1;
     }
 
@@ -95,15 +106,10 @@ int main(int argc, char **argv)
     return 0;
 }
 
-constexpr unsigned int hash_val(const char* str, int h = 0)
-{
-    return !str[h] ? 5381 : (hash_val(str, h+1)*33) ^ str[h];
-}
+void server(char *port) {
 
-void server (char* port) {
-
-    int yes=1; // For setsockopt
-    int server_socket, head_socket, selret, sock_index, fdaccept=0, caddr_len;
+    int yes = 1; // For setsockopt
+    int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
     struct sockaddr_in client_addr;
     struct addrinfo hints, *res;
     fd_set master_list, watch_list;
@@ -117,26 +123,26 @@ void server (char* port) {
     /* Fill up address structures */
     if (getaddrinfo(NULL, port, &hints, &res) != 0)
         perror("getaddrinfo failed");
-    
+
     /* Socket */
     server_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if(server_socket < 0)
+    if (server_socket < 0)
         perror("Cannot create socket");
-    
+
     // Gets rid of socket in use error
     setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
-    
+
     /* Bind */
-    if(bind(server_socket, res->ai_addr, res->ai_addrlen) < 0 )
+    if (::bind(server_socket, res->ai_addr, res->ai_addrlen) < 0)
         perror("Bind failed");
-    
+
     freeaddrinfo(res);
     //cout<<"Can print here4!"<<endl;
     //cout<<"[PA1-Server@CSE489/589]$ ";
     //cout<<"[PA1-Server@CSE489/589]$ ";
-	
+
     /* Listen */
-    if(listen(server_socket, BACKLOG) < 0)
+    if (listen(server_socket, BACKLOG) < 0)
         perror("Unable to listen on port");
 
     /* Zero select FD sets */
@@ -154,15 +160,15 @@ void server (char* port) {
     while (1) {
         memcpy(&watch_list, &master_list, sizeof(master_list));
 
-        cout<<"[PA1-Server@CSE489/589]$ ";
+        cout << "[PA1-Server@CSE489/589]$ ";
         cout.flush();
         /* select() system call. This will BLOCK */
         selret = select(head_socket + 1, &watch_list, NULL, NULL, NULL);
-        if(selret < 0)
+        if (selret < 0)
             perror("select failed.");
 
         /* Check if we have sockets/STDIN to process */
-        if(selret > 0) {
+        if (selret > 0) {
             /* Loop through socket descriptors to check which ones are ready */
             for (sock_index = 0; sock_index <= head_socket; sock_index += 1) {
 
@@ -171,16 +177,16 @@ void server (char* port) {
                     /* Check if new command on STDIN */
                     if (sock_index == STDIN) {
                         char *cmd = (char *) malloc(sizeof(char) * CMD_SIZE);
-
                         memset(cmd, '\0', CMD_SIZE);
-                        if (fgets(cmd, CMD_SIZE - 1, stdin) ==
-                            NULL) //Mind the newline character that will be written to cmd
+                        if (fgets(cmd, CMD_SIZE - 1, stdin) == NULL)
                             exit(-1);
-			cmd[strcspn(cmd, "\n")] = 0;
+                        // Deal with the newline added to end of STDIN file
+                        cmd[strcspn(cmd, "\n")] = 0;
                         // Need to use strtok() to parse the command and arguments separately
                         char *command = strtok(cmd, " ");
-                        cout <<"Command = " << command<< endl;
+                        cout << "Command = " << command << endl;
                         cout.flush();
+
                         // Check command & invoke the apt method below
                         if (!strcmp(command, "AUTHOR")) {
                             print_author_statement();
@@ -202,10 +208,10 @@ void server (char* port) {
                         }
                         free(cmd);
                     }
-                    /* Check if new client is requesting connection */
+                        /* Check if new client is requesting connection */
                     else if (sock_index == server_socket) {
                         caddr_len = sizeof(client_addr);
-                        fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t *)&caddr_len);
+                        fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t * ) & caddr_len);
                         if (fdaccept < 0)
                             perror("Accept failed.");
 
@@ -215,7 +221,7 @@ void server (char* port) {
                         FD_SET(fdaccept, &master_list);
                         if (fdaccept > head_socket) head_socket = fdaccept;
                     }
-                    /* Read from existing clients */
+                        /* Read from existing clients */
                     else {
                         /* Initialize buffer to receieve response */
                         char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
@@ -245,46 +251,138 @@ void server (char* port) {
     }
 }
 
-void client (char* port) {
-    string command_str;
+void client(char *port) {
+
+    int logged_in = 0, client_sock_index, client_head_socket=0;
+    fd_set client_master_list, client_watch_list;
+
+    // Bind port since the client will listen to server messages here
+    if(socket_bind(atoi(port)))
+        exit(-1);
+
+    printf("\ninside client side");
+    int server=0;//SOCKET FOR SERVER COMMUNICATION
+    int selret;
+    // struct client_msg data;
+
+    FD_ZERO(&client_master_list);//Initializes the file descriptor set fdset to have zero bits for all file descriptors.
+    FD_ZERO(&client_watch_list);
+    FD_SET(STDIN, &client_master_list);
     while (1) {
-        cout<<"[PA1-Client@CSE489/589]$ ";
-        getline(cin, command_str);
-        char *cstr = new char[command_str.length() + 1];
-        strcpy(cstr, command_str.c_str());
-        // Need to use strtok() to parse the command and arguments separately
-        char *command = strtok(cstr, " ");
-        cout<<"Command = "<<command<<endl;
-        if (!strcmp(command, "AUTHOR")) {
-            print_author_statement();
-        } else if (!strcmp(command, "IP")) {
-            print_ip_address();
-        } else if (!strcmp(command, "PORT")) {
-            cse4589_print_and_log("[%s:SUCCESS]\n", command);
-            cse4589_print_and_log("PORT:%c\n", port);
-            cse4589_print_and_log("[%s:END]\n", command);
-        } else if (!strcmp(command, "LIST")) {
+        memcpy(&client_watch_list, &client_master_list, sizeof(client_master_list));
 
-        } else if (!strcmp(command, "LOGIN")) {
-            // Need to extract just the first string from command and parse the other 2 here
-        } else if (!strcmp(command, "REFRESH")) {
+        cout << "[PA1-Client@CSE489/589]$ ";
+        cout.flush();
 
-        } else if (!strcmp(command, "SEND")) {
+        FD_ZERO(&client_master_list);
+        FD_ZERO(&client_watch_list);
 
-        } else if (!strcmp(command, "BROADCAST")) {
+        FD_SET(STDIN, &client_master_list);
+        FD_SET(server, &client_master_list);
+        client_head_socket = server;
 
-        } else if (!strcmp(command, "BLOCK")) {
+        /* select() system call. This will BLOCK */
+        selret = select(client_head_socket + 1, &client_watch_list, NULL, NULL, NULL);
+        if(selret < 0)
+        {
+            perror("select failed.");
+            exit(-1);
+        }
+        if(selret > 0) {
+            /* Loop through socket descriptors to check which ones are ready */
+            for (client_sock_index = 0; client_sock_index <= client_head_socket; client_sock_index += 1) {
+                if (FD_ISSET(client_sock_index, &client_watch_list)) {
+                    if (client_sock_index == STDIN) {
+                        char *cmd = (char *) malloc(sizeof(char) * CMD_SIZE), *saved_context;
+                        memset(cmd, '\0', CMD_SIZE);
+                        if (fgets(cmd, CMD_SIZE - 1, stdin) ==
+                            NULL) //Mind the newline character that will be written to cmd
+                            exit(-1);
+                        // Deal with the newline added to end of STDIN file
+                        cmd[strcspn(cmd, "\n")] = 0;
+                        // Need to use strtok() to parse the command and arguments separately
+                        char *command = strtok_r(cmd, " ", &saved_context);
+                        cout << "Command = " << command << endl;
+                        cout.flush();
 
-        } else if (!strcmp(command, "UNBLOCK")) {
+                        if (!strcmp(command, "AUTHOR")) {
+                            print_author_statement();
+                        } else if (!strcmp(command, "IP")) {
+                            print_ip_address();
+                        } else if (!strcmp(command, "PORT")) {
+                            cse4589_print_and_log("[%s:SUCCESS]\n", command);
+                            cse4589_print_and_log("PORT:%c\n", port);
+                            cse4589_print_and_log("[%s:END]\n", command);
+                        } else if (!strcmp(command, "LIST")) {
 
-        } else if (!strcmp(command, "LOGOUT")) {
+                        } else if (!strcmp(command, "LOGIN")) {
+                            bool error = 0;
+                            // Need to extract just the first string from command and parse the other 2 here
+                            char *server_ip = strtok_r(NULL, " ", &saved_context);
+                            char *server_port = strtok_r(NULL, " ", &saved_context);
 
-        } else if (!strcmp(command, "EXIT")) {
-            // Logout if logged-in
-            exit(0);
-        } else {
-            // Unidentified command
-            cout<<"Unidentified command, ignoring..."<<endl;
+                            // Validate port & IP
+                            size_t length = strlen(server_port);
+                            for (size_t i = 0; i < length; i++) {
+                                if(!isdigit(server_port[i])) {
+                                    error = 1;
+                                }
+                            }
+                            if (error) {
+                                perror("Invalid port, contains non-digits. Try again.");
+                                cse4589_print_and_log("[LOGIN:ERROR]\n");
+                                cse4589_print_and_log("[LOGIN:END]\n");
+                                continue;
+                            }
+                            // Is valid range of ports >
+                            if (atoi(server_port) < 1 || atoi(server_port) > 65535) {
+                                error = 1;
+                            }
+                            if (error) {
+                                perror("Invalid port, out of acceptable range [1 - 65535]. Try again.");
+                                cse4589_print_and_log("[LOGIN:ERROR]\n");
+                                cse4589_print_and_log("[LOGIN:END]\n");
+                                continue;
+                            }
+                            if (!isvalidIP(server_ip)) {
+                                perror("Invalid IP!");
+                                cse4589_print_and_log("[LOGIN:ERROR]\n");
+                                cse4589_print_and_log("[LOGIN:END]\n");
+                                continue;
+                            }
+                            // Connect to server and now the client socket is where the server would send messages,
+                            // so assign client_socket to server so we can use select() on it.
+                            server = connect_to_host(server_ip, server_port);
+
+                            FD_SET(server, &client_master_list);
+                            client_head_socket=server;
+                            logged_in=1;
+                            cse4589_print_and_log("[LOGIN:SUCCESS]\n");
+
+                        } else if (!strcmp(command, "REFRESH")) {
+
+                        } else if (!strcmp(command, "SEND")) {
+
+                        } else if (!strcmp(command, "BROADCAST")) {
+
+                        } else if (!strcmp(command, "BLOCK")) {
+
+                        } else if (!strcmp(command, "UNBLOCK")) {
+
+                        } else if (!strcmp(command, "LOGOUT")) {
+
+                        } else if (!strcmp(command, "EXIT")) {
+                            // Logout if logged-in
+                            exit(0);
+                        } else {
+                            // Unidentified command
+                            cout << "Unidentified command, ignoring..." << endl;
+                        }
+                    } else {
+                        // Parse and do something with msg received from server
+                    }
+                }
+            }
         }
     }
 }
@@ -297,11 +395,11 @@ void print_author_statement() {
     cse4589_print_and_log("[%s:END]\n", command_str);
 }
 
-void print_ip_address () {
+void print_ip_address() {
     struct addrinfo hints, *res;
     int dum_socket;
     struct sockaddr_in _self;
-    int sa_len = sizeof (_self);
+    int sa_len = sizeof(_self);
     char command_str[] = "IP";
     bool success = 1;
 
@@ -318,7 +416,7 @@ void print_ip_address () {
 
     /* Socket */
     dum_socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if(dum_socket < 0) {
+    if (dum_socket < 0) {
         perror("Failed to create socket");
         success = 0;
     }
@@ -327,8 +425,8 @@ void print_ip_address () {
         success = 0;
     }
 
-    memset (&_self, 42, sa_len);
-    if (getsockname(dum_socket, (struct sockaddr *) &_self, (socklen_t *)&sa_len) == -1) {
+    memset(&_self, 42, sa_len);
+    if (getsockname(dum_socket, (struct sockaddr *) &_self, (socklen_t * ) & sa_len) == -1) {
         perror("getsockname() failed");
         success = 0;
     }
@@ -341,5 +439,63 @@ void print_ip_address () {
         cse4589_print_and_log("[%s:ERROR]\n", command_str);
         cse4589_print_and_log("[%s:END]\n", command_str);
     }
+}
 
+bool socket_bind(int client_port) {
+    struct sockaddr_in client_addr;
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(client_socket < 0)
+    {
+        perror("Failed to create socket");
+        return 0;
+    }
+
+    // setting up the client socket
+    client_addr.sin_family=AF_INET;
+    client_addr.sin_addr.s_addr=INADDR_ANY;
+    client_addr.sin_port=htons(client_port);
+    int val=1;
+    setsockopt(client_socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
+
+    if(::bind(client_socket, (struct  sockaddr*) &client_addr, sizeof(struct sockaddr_in)) == 0)
+    {
+        perror("Client bound to the port successfully\n");
+        return 1;
+    }
+    else
+    {
+        perror("Error in binding to client port\n");
+        return 0;
+    }
+}
+
+int connect_to_host(char *server_ip, char *server_port) {
+    int client_socket;
+    struct addrinfo hints, *res;
+
+    /* Set up hints structure */
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+
+    /* Fill up address structures */
+    if (getaddrinfo(server_ip, server_port, &hints, &res) != 0)
+        perror("getaddrinfo failed");
+
+    /* Connect */
+    if (connect(client_socket, res->ai_addr, res->ai_addrlen) < 0)
+        perror("Connect failed");
+
+    freeaddrinfo(res);
+
+    return client_socket;
+}
+
+bool isvalidIP(char *ip) {
+    struct sockaddr_in addr;
+    int val = inet_pton(AF_INET, ip, &addr.sin_addr);
+    if (val == 1)
+        return val;
+    else
+        return 0;
 }
