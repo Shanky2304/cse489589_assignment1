@@ -506,7 +506,7 @@ int connect_to_host(char *server_ip, char *server_port) {
     /* Connect */
     cout<<"Trying to connect..."<<endl;
     cout.flush();
-    if (connect(client_socket, res->ai_addr, res->ai_addrlen) < 0)
+    if (connect(client_socket, res->ai_addr, res->ai_addrlen) < 0) {
         perror("Connect failed");
         error = 1;
     }
