@@ -255,12 +255,15 @@ void client(char *port) {
 
     int logged_in = 0, client_sock_index, client_head_socket=0;
     fd_set client_master_list, client_watch_list;
+   
+    cout<<"Inside client"<<endl;
+    cout.flush();
 
     // Bind port since the client will listen to server messages here
-    if(socket_bind(atoi(port)))
+    if(!socket_bind(atoi(port)))
         exit(-1);
-
-    printf("\ninside client side");
+    cout<<"Socket bind done!"<<endl;
+    cout.flush();
     int server=0;//SOCKET FOR SERVER COMMUNICATION
     int selret;
     // struct client_msg data;
@@ -269,11 +272,7 @@ void client(char *port) {
     FD_ZERO(&client_watch_list);
     FD_SET(STDIN, &client_master_list);
     while (1) {
-        memcpy(&client_watch_list, &client_master_list, sizeof(client_master_list));
-
-        cout << "[PA1-Client@CSE489/589]$ ";
-        cout.flush();
-
+        
         FD_ZERO(&client_master_list);
         FD_ZERO(&client_watch_list);
 
@@ -281,13 +280,22 @@ void client(char *port) {
         FD_SET(server, &client_master_list);
         client_head_socket = server;
 
+        memcpy(&client_watch_list, &client_master_list, sizeof(client_master_list));
+
+        cout << "[PA1-Client@CSE489/589]$ ";
+        cout.flush();
+
         /* select() system call. This will BLOCK */
         selret = select(client_head_socket + 1, &client_watch_list, NULL, NULL, NULL);
+        cout<<"select returned: "<<selret<<endl;
+        cout.flush();
         if(selret < 0)
         {
             perror("select failed.");
             exit(-1);
         }
+        cout<<"Select init done!"<<endl;
+        cout.flush();
         if(selret > 0) {
             /* Loop through socket descriptors to check which ones are ready */
             for (client_sock_index = 0; client_sock_index <= client_head_socket; client_sock_index += 1) {
@@ -311,7 +319,7 @@ void client(char *port) {
                             print_ip_address();
                         } else if (!strcmp(command, "PORT")) {
                             cse4589_print_and_log("[%s:SUCCESS]\n", command);
-                            cse4589_print_and_log("PORT:%c\n", port);
+                            cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
 
@@ -320,7 +328,11 @@ void client(char *port) {
                             // Need to extract just the first string from command and parse the other 2 here
                             char *server_ip = strtok_r(NULL, " ", &saved_context);
                             char *server_port = strtok_r(NULL, " ", &saved_context);
-
+                            
+                            if (server_ip == NULL || server_port == NULL) {
+                              cout<<"Incorrect Usage: LOGIN [server IP] [server port]"<<endl;
+                              continue;
+                            }
                             // Validate port & IP
                             size_t length = strlen(server_port);
                             for (size_t i = 0; i < length; i++) {
