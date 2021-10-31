@@ -256,14 +256,14 @@ void client(char *port) {
     int logged_in = 0, client_sock_index, client_head_socket=0;
     fd_set client_master_list, client_watch_list;
    
-    cout<<"Inside client"<<endl;
-    cout.flush();
+    //cout<<"Inside client"<<endl;
+    //cout.flush();
 
     // Bind port since the client will listen to server messages here
     if(!socket_bind(atoi(port)))
         exit(-1);
-    cout<<"Socket bind done!"<<endl;
-    cout.flush();
+    //cout<<"Socket bind done!"<<endl;
+    //cout.flush();
     int server=0;//SOCKET FOR SERVER COMMUNICATION
     int selret;
     // struct client_msg data;
@@ -287,15 +287,15 @@ void client(char *port) {
 
         /* select() system call. This will BLOCK */
         selret = select(client_head_socket + 1, &client_watch_list, NULL, NULL, NULL);
-        cout<<"select returned: "<<selret<<endl;
-        cout.flush();
+        //cout<<"select returned: "<<selret<<endl;
+        //cout.flush();
         if(selret < 0)
         {
             perror("select failed.");
             exit(-1);
         }
-        cout<<"Select init done!"<<endl;
-        cout.flush();
+        //cout<<"Select init done!"<<endl;
+        //cout.flush();
         if(selret > 0) {
             /* Loop through socket descriptors to check which ones are ready */
             for (client_sock_index = 0; client_sock_index <= client_head_socket; client_sock_index += 1) {
@@ -310,8 +310,8 @@ void client(char *port) {
                         cmd[strcspn(cmd, "\n")] = 0;
                         // Need to use strtok() to parse the command and arguments separately
                         char *command = strtok_r(cmd, " ", &saved_context);
-                        cout << "Command = " << command << endl;
-                        cout.flush();
+                        //cout << "Command = " << command << endl;
+                        //cout.flush();
 
                         if (!strcmp(command, "AUTHOR")) {
                             print_author_statement();
@@ -329,6 +329,8 @@ void client(char *port) {
                             char *server_ip = strtok_r(NULL, " ", &saved_context);
                             char *server_port = strtok_r(NULL, " ", &saved_context);
                             
+                            //cout<<"Server IP: "<<server_ip<<"Server Port: "<<server_port<<endl;
+                            //cout.flush(); 
                             if (server_ip == NULL || server_port == NULL) {
                               cout<<"Incorrect Usage: LOGIN [server IP] [server port]"<<endl;
                               continue;
@@ -461,7 +463,7 @@ bool socket_bind(int client_port) {
         perror("Failed to create socket");
         return 0;
     }
-
+    //cout<<"In bind, socket: "<<client_socket<<endl;
     // setting up the client socket
     client_addr.sin_family=AF_INET;
     client_addr.sin_addr.s_addr=INADDR_ANY;
@@ -482,7 +484,6 @@ bool socket_bind(int client_port) {
 }
 
 int connect_to_host(char *server_ip, char *server_port) {
-    int client_socket;
     struct addrinfo hints, *res;
 
     /* Set up hints structure */
@@ -495,6 +496,8 @@ int connect_to_host(char *server_ip, char *server_port) {
         perror("getaddrinfo failed");
 
     /* Connect */
+    cout<<"Trying to connect..."<<endl;
+    cout.flush();
     if (connect(client_socket, res->ai_addr, res->ai_addrlen) < 0)
         perror("Connect failed");
 
