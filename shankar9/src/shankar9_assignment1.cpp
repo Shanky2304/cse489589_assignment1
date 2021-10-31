@@ -331,6 +331,7 @@ void client(char *port) {
                             
                             //cout<<"Server IP: "<<server_ip<<"Server Port: "<<server_port<<endl;
                             //cout.flush(); 
+
                             if (server_ip == NULL || server_port == NULL) {
                               cout<<"Incorrect Usage: LOGIN [server IP] [server port]"<<endl;
                               continue;
@@ -367,6 +368,10 @@ void client(char *port) {
                             // Connect to server and now the client socket is where the server would send messages,
                             // so assign client_socket to server so we can use select() on it.
                             server = connect_to_host(server_ip, server_port);
+                            if (server == -1) {
+                                perror("Failed to connect to server, verify details.");
+                                continue;
+                            }
 
                             FD_SET(server, &client_master_list);
                             client_head_socket=server;
@@ -465,9 +470,9 @@ bool socket_bind(int client_port) {
     }
     //cout<<"In bind, socket: "<<client_socket<<endl;
     // setting up the client socket
-    client_addr.sin_family=AF_INET;
-    client_addr.sin_addr.s_addr=INADDR_ANY;
-    client_addr.sin_port=htons(client_port);
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_addr.s_addr = INADDR_ANY;
+    client_addr.sin_port = htons(client_port);
     int val=1;
     setsockopt(client_socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
 
@@ -485,6 +490,7 @@ bool socket_bind(int client_port) {
 
 int connect_to_host(char *server_ip, char *server_port) {
     struct addrinfo hints, *res;
+    bool error = 0;
 
     /* Set up hints structure */
     memset(&hints, 0, sizeof(hints));
@@ -492,18 +498,22 @@ int connect_to_host(char *server_ip, char *server_port) {
     hints.ai_socktype = SOCK_STREAM;
 
     /* Fill up address structures */
-    if (getaddrinfo(server_ip, server_port, &hints, &res) != 0)
+    if (getaddrinfo(server_ip, server_port, &hints, &res) != 0) {
         perror("getaddrinfo failed");
+        error = 1;
+    }
 
     /* Connect */
     cout<<"Trying to connect..."<<endl;
     cout.flush();
     if (connect(client_socket, res->ai_addr, res->ai_addrlen) < 0)
         perror("Connect failed");
+        error = 1;
+    }
 
     freeaddrinfo(res);
 
-    return client_socket;
+    return error ? -1 : client_socket;
 }
 
 bool isvalidIP(char *ip) {
