@@ -63,6 +63,33 @@ bool socket_bind(int client_port);
 
 bool isvalidIP(char *ip);
 
+bool compare_list_data (const struct list_data *a, const struct list_data *b);
+
+struct list_data
+{
+    int id;
+    char host_name[40];
+    char ip[32];
+    int port;
+    int socket;
+    int rcv_msg_count;
+    int snd_msg_count;
+    char status[20];
+
+};
+
+struct list_data *list_data_ptr[5];
+
+struct server_msg_model
+{
+    char cmd[20];
+    char sender_ip[32];
+    char data[256];
+    struct list_data list_entry;
+};
+
+
+
 /**
  * main function
  *
@@ -75,7 +102,6 @@ int main(int argc, char **argv) {
         cout << "Usage: [./assignment1] [mode] [port]" << endl;
         return -1;
     }
-
     /*Init. Logger*/
     cse4589_init_log(argv[2]);
     /* Clear LOGFILE*/
@@ -110,6 +136,7 @@ void server(char *port) {
 
     int yes = 1; // For setsockopt
     int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
+    struct server_msg_model server_msg;
     struct sockaddr_in client_addr;
     struct addrinfo hints, *res;
     fd_set master_list, watch_list;
@@ -208,20 +235,55 @@ void server(char *port) {
                         }
                         free(cmd);
                     }
-                        /* Check if new client is requesting connection */
+                    /* Check if new client is requesting connection */
                     else if (sock_index == server_socket) {
                         caddr_len = sizeof(client_addr);
                         fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t * ) & caddr_len);
                         if (fdaccept < 0)
                             perror("Accept failed.");
+                        char client_ip[INET_ADDRSTRLEN];
+                        inet_ntop(AF_INET, &client_addr.sin_addr.s_addr, client_ip, INET_ADDRSTRLEN);
 
-                        printf("\nRemote Host connected!\n");
+                        cout<<"Remote Host connected! With IP: "<<client_ip<<endl;
+                        cout.flush();
 
                         /* Add to watched socket list */
                         FD_SET(fdaccept, &master_list);
                         if (fdaccept > head_socket) head_socket = fdaccept;
+
+                        char client_host_name[1024];
+                        getnameinfo((struct sockaddr *)&client_addr, caddr_len, client_host_name, sizeof(client_host_name), 0, 0, 0);
+                        cout<<"Client host name : "<<client_host_name<<" port # : "<<ntohs(client_addr.sin_port)<<endl;
+                        cout.flush();
+
+                        // Initialize a list entry for this client
+                        int client_count = 0;
+                        for (auto i: list_data_ptr) {
+                            if (i->id == 0) {
+                                break;
+                            }
+                            client_count++;
+                        }
+
+                        list_data_ptr[client_count]->id = client_count + 1;
+                        list_data_ptr[client_count]->port = ntohs(client_addr.sin_port);
+                        list_data_ptr[client_count]->socket = fdaccept;
+                        list_data_ptr[client_count]->snd_msg_count = 0;
+                        list_data_ptr[client_count]->rcv_msg_count = 0;
+                        strcpy(list_data_ptr[client_count]->status, "logged-in");
+                        strcpy(list_data_ptr[client_count]->ip, client_ip);
+                        strcpy(list_data_ptr[client_count]->host_name, client_host_name);
+
+                        // Sort the list by port number
+                        sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
+
+                        strcpy(server_msg.cmd, "some_command");
+                        if(send(fdaccept, &server_msg, sizeof(server_msg), 0) == sizeof(server_msg)) {
+                            cout<<"Sent command to the client that just logged in."<<endl;
+                            cout.flush();
+                        }
                     }
-                        /* Read from existing clients */
+                    /* Read from existing clients */
                     else {
                         /* Initialize buffer to receieve response */
                         char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
@@ -249,6 +311,14 @@ void server(char *port) {
             }
         }
     }
+}
+
+bool compare_list_data (const struct list_data *a, const struct list_data *b) {
+
+    if (a->port < b->port)
+        return 1;
+    else
+        return 0;
 }
 
 void client(char *port) {
