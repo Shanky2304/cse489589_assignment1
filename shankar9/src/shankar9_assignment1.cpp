@@ -88,6 +88,13 @@ struct server_msg_model
     struct list_data list_entry;
 };
 
+struct client_msg_model
+{
+    char cmd[20];
+    char client_ip[32];
+    char data[256];
+};
+
 
 
 /**
@@ -137,6 +144,7 @@ void server(char *port) {
     int yes = 1; // For setsockopt
     int server_socket, head_socket, selret, sock_index, fdaccept = 0, caddr_len;
     struct server_msg_model server_msg;
+    struct client_msg_model client_msg;
     struct sockaddr_in client_addr;
     struct addrinfo hints, *res;
     fd_set master_list, watch_list;
@@ -171,6 +179,12 @@ void server(char *port) {
     /* Listen */
     if (listen(server_socket, BACKLOG) < 0)
         perror("Unable to listen on port");
+
+    // Init
+    for(int i = 0; i < 5; i++) {
+        list_data_ptr[i] = (struct list_data *) malloc(sizeof(struct list_data));
+        list_data_ptr[i]->id = 0;
+    }
 
     /* Zero select FD sets */
     FD_ZERO(&master_list);
@@ -286,26 +300,36 @@ void server(char *port) {
                     /* Read from existing clients */
                     else {
                         /* Initialize buffer to receieve response */
-                        char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
-                        memset(buffer, '\0', BUFFER_SIZE);
+//                        char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
+//                        memset(buffer, '\0', BUFFER_SIZE);
+                        memset(&client_msg, '\0', sizeof (client_msg));
 
-                        if (recv(sock_index, buffer, BUFFER_SIZE, 0) <= 0) {
+                        if (recv(sock_index, &client_msg, sizeof (client_msg), 0) <= 0) {
                             close(sock_index);
-                            printf("Remote Host terminated sockaddrtion!\n");
+                            printf("Remote Host terminated connection!\n");
 
                             /* Remove from watched list */
                             FD_CLR(sock_index, &master_list);
                         } else {
                             //Process incoming data from existing clients here ...
-
-                            printf("\nClient sent me: %s\n", buffer);
-                            printf("ECHOing it back to the remote host ... ");
-                            if (send(fdaccept, buffer, strlen(buffer), 0) == strlen(buffer))
-                                printf("Done!\n");
-                            fflush(stdout);
+                            if(!strcmp(client_msg.cmd, "LOGOUT")) {
+                                for (auto i : list_data_ptr) {
+                                    if (i->socket == sock_index) {
+                                        strcpy(i->status,"logged-out");
+                                        close(sock_index);
+                                        FD_CLR(sock_index, &master_list);
+                                        int client_count = 0;
+                                        for (auto i: list_data_ptr) {
+                                            if (i->id == 0) {
+                                                break;
+                                            }
+                                            client_count++;
+                                        }
+                                        sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
+                                    }
+                                }
+                            }
                         }
-
-                        free(buffer);
                     }
                 }
             }
@@ -334,9 +358,10 @@ void client(char *port) {
         exit(-1);
     //cout<<"Socket bind done!"<<endl;
     //cout.flush();
-    int server_sock = 0;//SOCKET FOR SERVER COMMUNICATION
+    // Socket server talks to
+    int server_sock = 0;
     int selret;
-    // struct client_msg data;
+    struct client_msg_model client_msg;
 
     FD_ZERO(&client_master_list);//Initializes the file descriptor set fdset to have zero bits for all file descriptors.
     FD_ZERO(&client_watch_list);
@@ -460,7 +485,18 @@ void client(char *port) {
                         } else if (!strcmp(command, "UNBLOCK")) {
 
                         } else if (!strcmp(command, "LOGOUT")) {
-
+                            if (!logged_in) {
+                                cout<<"Not logged in!"<<endl;
+                                continue;
+                            }
+                            // Tell server we're logging out.
+                            strcpy(client_msg.cmd,"LOGOUT");
+                            if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg)) {
+                                cse4589_print_and_log("[LOGOUT:SUCCESS]\n");
+                                logged_in = 0;
+                                server_sock=close(server_sock);
+                            }
+                            cse4589_print_and_log("[LOGOUT:END]\n");
                         } else if (!strcmp(command, "EXIT")) {
                             // Logout if logged-in
                             exit(0);
