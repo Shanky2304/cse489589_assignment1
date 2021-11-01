@@ -261,6 +261,7 @@ void server(char *port) {
                                 idx ++;
                             }
                             cse4589_print_and_log("[LIST:END]\n");
+                            fflush(stdout);
                         } else if (!strcmp(command, "STATISTICS")) {
                             // TODO: Handle STATISTICS command
                         } else if (!strcmp(command, "BLOCKED")) {
