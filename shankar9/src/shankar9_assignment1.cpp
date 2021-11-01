@@ -240,6 +240,23 @@ void server(char *port) {
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
                             // TODO: Handle LIST command
+                            int client_count = 0;
+                            for (auto i: list_data_ptr) {
+                                if (i->id == 0) {
+                                    continue;
+                                }
+                                client_count++;
+                            }
+                            sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
+
+                            cse4589_print_and_log("[LIST:SUCCESS]\n");
+                            for(auto i : list_data_ptr) {
+                                if (i->id == 0) {
+                                    continue;
+                                }
+                                cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", i->id, i->host_name, i->ip, i->port);
+                            }
+                            cse4589_print_and_log("[LIST:END]\n");
                         } else if (!strcmp(command, "STATISTICS")) {
                             // TODO: Handle STATISTICS command
                         } else if (!strcmp(command, "BLOCKED")) {
