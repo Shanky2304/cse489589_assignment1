@@ -516,6 +516,12 @@ void client(char *port) {
                             if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg)) {
                                 cse4589_print_and_log("[LOGOUT:SUCCESS]\n");
                                 logged_in = 0;
+                                /* To deal with "Connect failed: Bad file descriptor" for clients trying to
+                                 * login after a logout we need to bind the port to client_socket here since
+                                 * we closed server sock.
+                                 * */
+                                if(!socket_bind(atoi(port)))
+                                    exit(-1);
                                 server_sock=close(server_sock);
                             }
                             cse4589_print_and_log("[LOGOUT:END]\n");
