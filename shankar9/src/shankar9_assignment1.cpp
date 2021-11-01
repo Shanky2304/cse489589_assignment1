@@ -241,7 +241,6 @@ void server(char *port) {
                             cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
-                            // TODO: Handle LIST command
                             int client_count = 0;
                             for (auto i: list_data_ptr) {
                                 if (i->id == 0) {
@@ -263,7 +262,17 @@ void server(char *port) {
                             cse4589_print_and_log("[LIST:END]\n");
                             fflush(stdout);
                         } else if (!strcmp(command, "STATISTICS")) {
-                            // TODO: Handle STATISTICS command
+                            cse4589_print_and_log("[STATISTICS:SUCCESS]\n");
+                            int idx = 1;
+                            for(auto i : list_data_ptr) {
+                                if (i->id == 0) {
+                                    continue;
+                                }
+                                cse4589_print_and_log("%-5d%-35s%-8d%-8d%-8s\n",
+                                                      idx, i->host_name, i->snd_msg_count, i->rcv_msg_count, i->status);
+                                idx ++;
+                            }
+                            cse4589_print_and_log("[STATISTICS:END]\n");
                         } else if (!strcmp(command, "BLOCKED")) {
                             // Need to figure out how to work with 2nd argument here maybe strtok()
                         } else {
@@ -528,6 +537,16 @@ void client(char *port) {
                             cse4589_print_and_log("[LOGOUT:END]\n");
                         } else if (!strcmp(command, "EXIT")) {
                             // Logout if logged-in
+                            if (logged_in) {
+                                // Tell server we're logging out forever
+                                strcpy(client_msg.cmd,"EXIT");
+                                if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg)) {
+                                    cse4589_print_and_log("[EXIT:SUCCESS]\n");
+                                    logged_in = 0;
+                                    server_sock = close(server_sock);
+                                }
+                                cse4589_print_and_log("[EXIT:END]\n");
+                            }
                             exit(0);
                         } else {
                             // Unidentified command
