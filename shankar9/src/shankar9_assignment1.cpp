@@ -334,7 +334,7 @@ void client(char *port) {
         exit(-1);
     //cout<<"Socket bind done!"<<endl;
     //cout.flush();
-    int server=0;//SOCKET FOR SERVER COMMUNICATION
+    int server_sock = 0;//SOCKET FOR SERVER COMMUNICATION
     int selret;
     // struct client_msg data;
 
@@ -347,8 +347,8 @@ void client(char *port) {
         FD_ZERO(&client_watch_list);
 
         FD_SET(STDIN, &client_master_list);
-        FD_SET(server, &client_master_list);
-        client_head_socket = server;
+        FD_SET(server_sock, &client_master_list);
+        client_head_socket = server_sock;
 
         memcpy(&client_watch_list, &client_master_list, sizeof(client_master_list));
 
@@ -370,6 +370,7 @@ void client(char *port) {
             /* Loop through socket descriptors to check which ones are ready */
             for (client_sock_index = 0; client_sock_index <= client_head_socket; client_sock_index += 1) {
                 if (FD_ISSET(client_sock_index, &client_watch_list)) {
+
                     if (client_sock_index == STDIN) {
                         char *cmd = (char *) malloc(sizeof(char) * CMD_SIZE), *saved_context;
                         memset(cmd, '\0', CMD_SIZE);
@@ -437,14 +438,14 @@ void client(char *port) {
                             }
                             // Connect to server and now the client socket is where the server would send messages,
                             // so assign client_socket to server so we can use select() on it.
-                            server = connect_to_host(server_ip, server_port);
-                            if (server == -1) {
+                            server_sock = connect_to_host(server_ip, server_port);
+                            if (server_sock == -1) {
                                 perror("Failed to connect to server, verify details.");
                                 continue;
                             }
 
-                            FD_SET(server, &client_master_list);
-                            client_head_socket=server;
+                            FD_SET(server_sock, &client_master_list);
+                            client_head_socket=server_sock;
                             logged_in=1;
                             cse4589_print_and_log("[LOGIN:SUCCESS]\n");
 
@@ -469,6 +470,15 @@ void client(char *port) {
                         }
                     } else {
                         // Parse and do something with msg received from server
+                        struct server_msg_model msg_rcvd;
+                        memset(&msg_rcvd, '\0', sizeof(msg_rcvd));
+
+                        if (recv(server_sock, &msg_rcvd, sizeof(msg_rcvd), 0) >= 0) {
+
+                            if(!strcmp (msg_rcvd.cmd, "some_command")) {
+                                cse4589_print_and_log("[LOGIN:END]\n");
+                            }
+                        }
                     }
                 }
             }
