@@ -30,6 +30,7 @@
 #include <cstring>
 #include <netdb.h>
 #include <unistd.h>
+#include <algorithm>
 
 #include "../include/global.h"
 #include "../include/logger.h"
