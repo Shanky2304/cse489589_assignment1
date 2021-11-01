@@ -42,6 +42,8 @@
 #define TRUE 1
 #define CMD_SIZE 100
 #define BUFFER_SIZE 256
+#define LOGGED_IN "logged-in"
+#define LOGGED_OUT "logged-out"
 
 using namespace std;
 // "1" in server mode, "0" in client mode
@@ -250,11 +252,13 @@ void server(char *port) {
                             sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
 
                             cse4589_print_and_log("[LIST:SUCCESS]\n");
+                            int idx = 1;
                             for(auto i : list_data_ptr) {
-                                if (i->id == 0) {
+                                if (i->id == 0 || strcmp(i->status, LOGGED_IN)) {
                                     continue;
                                 }
-                                cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", i->id, i->host_name, i->ip, i->port);
+                                cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
+                                idx ++;
                             }
                             cse4589_print_and_log("[LIST:END]\n");
                         } else if (!strcmp(command, "STATISTICS")) {
@@ -302,7 +306,7 @@ void server(char *port) {
                         list_data_ptr[client_count]->socket = fdaccept;
                         list_data_ptr[client_count]->snd_msg_count = 0;
                         list_data_ptr[client_count]->rcv_msg_count = 0;
-                        strcpy(list_data_ptr[client_count]->status, "logged-in");
+                        strcpy(list_data_ptr[client_count]->status, LOGGED_IN);
                         strcpy(list_data_ptr[client_count]->ip, client_ip);
                         strcpy(list_data_ptr[client_count]->host_name, client_host_name);
 
@@ -333,7 +337,7 @@ void server(char *port) {
                             if(!strcmp(client_msg.cmd, "LOGOUT")) {
                                 for (auto i : list_data_ptr) {
                                     if (i->socket == sock_index) {
-                                        strcpy(i->status,"logged-out");
+                                        strcpy(i->status, LOGGED_OUT);
                                         close(sock_index);
                                         FD_CLR(sock_index, &master_list);
                                         int client_count = 0;
