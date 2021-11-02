@@ -414,6 +414,12 @@ void client(char *port) {
     int selret;
     struct client_msg_model client_msg;
 
+    // Init
+    for(int i = 0; i < 5; i++) {
+        list_data_ptr[i] = (struct list_data *) malloc(sizeof(struct list_data));
+        list_data_ptr[i]->id = 0;
+    }
+
     FD_ZERO(&client_master_list);//Initializes the file descriptor set fdset to have zero bits for all file descriptors.
     FD_ZERO(&client_watch_list);
     FD_SET(STDIN, &client_master_list);
@@ -582,6 +588,7 @@ void client(char *port) {
                                 // Refresh LIST data
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
+                                    // Segmentation fault
                                     *list_data_ptr[client_count++] = i;
                                 }
                                 cse4589_print_and_log("[LOGIN:END]\n");
