@@ -117,6 +117,12 @@ int main(int argc, char **argv) {
     fclose(fopen(LOGFILE, "w"));
     /*Start Here*/
 
+    // Is valid range of ports >
+    if (atoi(argv[2]) < 1 || atoi(argv[2]) > 65535) {
+        perror("Invalid port, out of acceptable range [1 - 65535].");
+        exit(-1);
+    }
+
     if (*argv[1] == 's') {
         // server mode
         mode = 1;
@@ -573,6 +579,11 @@ void client(char *port) {
                         if (recv(server_sock, &msg_rcvd, sizeof(msg_rcvd), 0) >= 0) {
 
                             if(!strcmp (msg_rcvd.cmd, "login_list")) {
+                                // Refresh LIST data
+                                int client_count = 0;
+                                for (auto i : msg_rcvd.list_entries) {
+                                    *list_data_ptr[client_count++] = i;
+                                }
                                 cse4589_print_and_log("[LOGIN:END]\n");
                             }
                         }
