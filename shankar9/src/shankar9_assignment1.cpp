@@ -475,7 +475,26 @@ void client(char *port) {
                             cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
+                            int client_count = 0;
+                            for (auto i: list_data_ptr) {
+                                if (i->id == 0) {
+                                    continue;
+                                }
+                                client_count++;
+                            }
+                            sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
 
+                            cse4589_print_and_log("[LIST:SUCCESS]\n");
+                            int idx = 1;
+                            for(auto i : list_data_ptr) {
+                                if (i->id == 0 || strcmp(i->status, LOGGED_IN)) {
+                                    continue;
+                                }
+                                cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
+                                idx ++;
+                            }
+                            cse4589_print_and_log("[LIST:END]\n");
+                            fflush(stdout);
                         } else if (!strcmp(command, "LOGIN")) {
                             bool error = 0;
                             // Need to extract just the first string from command and parse the other 2 here
