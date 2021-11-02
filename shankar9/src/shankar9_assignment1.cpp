@@ -357,7 +357,7 @@ void server(char *port) {
                             FD_CLR(sock_index, &master_list);
                         } else {
                             //Process incoming data from existing clients here ...
-                            if(!strcmp(client_msg.cmd, "LOGOUT")) {
+                            if(!strcmp(client_msg.cmd, "logout")) {
                                 for (auto i : list_data_ptr) {
                                     if (i->socket == sock_index) {
                                         strcpy(i->status, LOGGED_OUT);
@@ -372,6 +372,21 @@ void server(char *port) {
                                         }
                                         sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
                                     }
+                                }
+                            } else if (!strcmp(client_msg.cmd, "refresh")) {
+                                // Send list to the client
+                                strcpy(server_msg.cmd, "refresh_data");
+                                int counter = 0;
+                                for (auto i : list_data_ptr) {
+                                    if(i->id == 0 || strcmp(i->status, LOGGED_IN)) {
+                                        continue;
+                                    }
+                                    server_msg.list_entries[counter] = *i;
+                                    counter++;
+                                }
+                                if(send(sock_index, &server_msg, sizeof(server_msg), 0) == sizeof(server_msg)) {
+                                    cout<<"Sent refresh_data to the client."<<endl;
+                                    cout.flush();
                                 }
                             }
                         }
@@ -551,6 +566,9 @@ void client(char *port) {
                             cse4589_print_and_log("[LOGIN:SUCCESS]\n");
 
                         } else if (!strcmp(command, "REFRESH")) {
+                            strcpy(client_msg.cmd,"refresh");
+                            if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg))
+                                cse4589_print_and_log("[REFRESH:SUCCESS]\n");
 
                         } else if (!strcmp(command, "SEND")) {
 
@@ -566,7 +584,7 @@ void client(char *port) {
                                 continue;
                             }
                             // Tell server we're logging out.
-                            strcpy(client_msg.cmd,"LOGOUT");
+                            strcpy(client_msg.cmd,"logout");
                             if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg)) {
                                 cse4589_print_and_log("[LOGOUT:SUCCESS]\n");
                                 logged_in = 0;
@@ -607,10 +625,16 @@ void client(char *port) {
                                 // Refresh LIST data
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
-                                    // Segmentation fault
                                     *list_data_ptr[client_count++] = i;
                                 }
                                 cse4589_print_and_log("[LOGIN:END]\n");
+                            } else if (!strcmp (msg_rcvd.cmd, "refresh_data")) {
+                                // Refresh LIST data
+                                int client_count = 0;
+                                for (auto i : msg_rcvd.list_entries) {
+                                    *list_data_ptr[client_count++] = i;
+                                }
+                                cse4589_print_and_log("[REFRESH:END]\n");
                             }
                         }
                     }
