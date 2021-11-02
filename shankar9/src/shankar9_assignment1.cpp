@@ -18,8 +18,7 @@
  *
  * @section DESCRIPTION
  *
- * Took references from -
- * https://github.com/vaibhavchincholkar/CSE-489-589-Modern-Networking-Concepts/blob/master/cse489589_assignment1/vchincho/src/vchincho_assignment1.c
+ * Took references/code snippets from - https://beej.us/guide/bgnet/html/
  */
 #include <iostream>
 #include <stdio.h>
@@ -88,7 +87,7 @@ struct server_msg_model
     char cmd[20];
     char sender_ip[32];
     char data[256];
-    struct list_data list_entry;
+    struct list_data list_entries[5];
 };
 
 struct client_msg_model
@@ -323,9 +322,17 @@ void server(char *port) {
                         // Sort the list by port number
                         sort(list_data_ptr, list_data_ptr + client_count + 1, compare_list_data);
 
-                        strcpy(server_msg.cmd, "some_command");
+                        strcpy(server_msg.cmd, "login_list");
+                        int counter = 0;
+                        for (auto i : list_data_ptr) {
+                            if(i->id == 0 || strcmp(i->status, LOGGED_IN)) {
+                                continue;
+                            }
+                            server_msg.list_entries[counter] = *i;
+                            counter++;
+                        }
                         if(send(fdaccept, &server_msg, sizeof(server_msg), 0) == sizeof(server_msg)) {
-                            cout<<"Sent command to the client that just logged in."<<endl;
+                            cout<<"Sent login_list to the client that just logged in."<<endl;
                             cout.flush();
                         }
                     }
@@ -369,6 +376,12 @@ void server(char *port) {
     }
 }
 
+/**
+ * Comparator used to sort a list of pointers to struct list_data in increasing order of port numbers.
+ * Designed specifically for sort() method in <algorithm>.
+ * E.g. - sort(list_data_ptr, list_data_ptr + size, compare_list_data);
+ * @return returns true if a < b
+ */
 bool compare_list_data (const struct list_data *a, const struct list_data *b) {
 
     if (a->port < b->port)
@@ -539,7 +552,7 @@ void client(char *port) {
                             // Logout if logged-in
                             if (logged_in) {
                                 // Tell server we're logging out forever
-                                strcpy(client_msg.cmd,"EXIT");
+                                strcpy(client_msg.cmd,"client_exit");
                                 if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg)) {
                                     cse4589_print_and_log("[EXIT:SUCCESS]\n");
                                     logged_in = 0;
@@ -559,7 +572,7 @@ void client(char *port) {
 
                         if (recv(server_sock, &msg_rcvd, sizeof(msg_rcvd), 0) >= 0) {
 
-                            if(!strcmp (msg_rcvd.cmd, "some_command")) {
+                            if(!strcmp (msg_rcvd.cmd, "login_list")) {
                                 cse4589_print_and_log("[LOGIN:END]\n");
                             }
                         }
@@ -578,6 +591,11 @@ void print_author_statement() {
     cse4589_print_and_log("[%s:END]\n", command_str);
 }
 
+/**
+ * Creates a dummy unbounded UDP socket and connects to google DNS server.
+ * Leverages getsockname to get the external IP.
+ * Approach referenced from - https://ubmnc.wordpress.com/2010/09/22/on-getting-the-ip-name-of-a-machine-for-chatty/
+ */
 void print_ip_address() {
     struct addrinfo hints, *res;
     int dum_socket;
@@ -624,6 +642,13 @@ void print_ip_address() {
     }
 }
 
+/**
+ * This method is only used by the client to bind the client_socket to the client port.
+ * After a server close on a LOGOUT we might have to call this again to allocate a new socket in-case
+ * the client logs in again.
+ * @param client_port - Port on which the client was started.
+ * @return - Boolean value representing the status of socket creation and bind.
+ */
 bool socket_bind(int client_port) {
     struct sockaddr_in client_addr;
     client_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -652,6 +677,12 @@ bool socket_bind(int client_port) {
     }
 }
 
+/**
+ * Used by the client to connect to a server.
+ * @param server_ip
+ * @param server_port
+ * @return - Client socket file descriptor if connect was successful, else -1. Needs to be handled by caller.
+ */
 int connect_to_host(char *server_ip, char *server_port) {
     struct addrinfo hints, *res;
     bool error = 0;
