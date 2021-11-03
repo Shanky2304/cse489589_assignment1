@@ -353,6 +353,14 @@ void server(char *port) {
                             close(sock_index);
                             printf("Remote Host terminated connection!\n");
 
+                            // Update logged out status
+                            for (auto i : list_data_ptr) {
+                                if (i->socket == sock_index) {
+                                    strcpy(i->status, LOGGED_OUT);
+                                    break;
+                                }
+                            }
+
                             /* Remove from watched list */
                             FD_CLR(sock_index, &master_list);
                         } else {
@@ -408,6 +416,7 @@ void server(char *port) {
                                             break;
                                         } else {
                                             strcpy(server_msg.cmd, "relayed_msg");
+                                            strcpy(server_msg.sender_ip, sender_client_ip);
                                             strcpy(server_msg.data, client_msg.data);
                                             if (send(i->socket, &server_msg, sizeof(server_msg), 0) ==
                                                 sizeof(server_msg)) {
@@ -416,6 +425,7 @@ void server(char *port) {
                                                                       sender_client_ip, i->ip, server_msg.data);
                                                 cse4589_print_and_log("[RELAYED:END]\n");
                                                 strcpy (client_msg.cmd, "send_success");
+                                                fflush(stdout);
                                                 // Maybe we should do some error-handling here as well
                                                 if (send (sock_index, &client_msg, sizeof (client_msg), 0) ==
                                                 sizeof (client_msg)) {
@@ -729,7 +739,10 @@ void client(char *port) {
                                 cse4589_print_and_log("[SEND:ERROR]\n");
                                 cse4589_print_and_log("[SEND:END]\n");
                             } else if (!strcmp(msg_rcvd.cmd, "relayed_msg")) {
-                                cout<<"Received message : "<<msg_rcvd.data<<endl;
+                                cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
+                                cse4589_print_and_log("msg from:%s\n[msg]:%s\n",
+                                                      msg_rcvd.sender_ip, msg_rcvd.data);
+                                cse4589_print_and_log("[RECEIVED:END]\n");
                             }
                         }
                     }
