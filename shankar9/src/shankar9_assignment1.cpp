@@ -743,6 +743,7 @@ void client(char *port) {
                                 cse4589_print_and_log("msg from:%s\n[msg]:%s\n",
                                                       msg_rcvd.sender_ip, msg_rcvd.data);
                                 cse4589_print_and_log("[RECEIVED:END]\n");
+                                fflush(stdout);
                             }
                         }
                     }
