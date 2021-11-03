@@ -723,7 +723,9 @@ void client(char *port) {
                                 cse4589_print_and_log("[SEND:ERROR]\n");
                                 cse4589_print_and_log("[SEND:END]\n");
                             } else if (!strcmp(msg_rcvd.cmd, "relayed_msg")) {
-                                cout<<"Received message : "<<msg_rcvd.data;
+                                cse4589_print_and_log("[RELAYED:SUCCESS]\n");
+                                cout<<"Received message : "<<msg_rcvd.data<<endl;
+                                cse4589_print_and_log("[RELAYED:END]\n");
                             }
                         }
                     }
