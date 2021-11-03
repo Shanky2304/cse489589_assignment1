@@ -192,6 +192,8 @@ void server(char *port) {
     for(int i = 0; i < 5; i++) {
         list_data_ptr[i] = (struct list_data *) malloc(sizeof(struct list_data));
         list_data_ptr[i]->id = 0;
+        list_data_ptr[i]->snd_msg_count = 0;
+        list_data_ptr[i]->rcv_msg_count = 0;
     }
 
     /* Zero select FD sets */
@@ -345,8 +347,6 @@ void server(char *port) {
                     /* Read from existing clients */
                     else {
                         /* Initialize buffer to receieve response */
-//                        char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
-//                        memset(buffer, '\0', BUFFER_SIZE);
                         memset(&client_msg, '\0', sizeof (client_msg));
 
                         if (recv(sock_index, &client_msg, sizeof (client_msg), 0) <= 0) {
@@ -391,14 +391,18 @@ void server(char *port) {
                             } else if (!strcmp(client_msg.cmd, "send")) {
                                 bool found_ip = 0;
                                 char sender_client_ip[32];
+                                // Who's thr sender?
                                 for (auto k: list_data_ptr) {
                                     if (k->socket == sock_index) {
                                         strcpy(sender_client_ip, k->ip);
+                                        k->snd_msg_count++;
                                     }
                                 }
+                                // Who's the receiver?
                                 for (auto i: list_data_ptr) {
                                     if (!strcmp(i->ip, client_msg.client_ip)) {
                                         found_ip = 1;
+                                        i->rcv_msg_count++;
                                         if (!strcmp(i->status, LOGGED_OUT)) {
                                             strcat(i->buffer, client_msg.data);
                                             break;
@@ -407,8 +411,10 @@ void server(char *port) {
                                             strcpy(server_msg.data, client_msg.data);
                                             if (send(i->socket, &server_msg, sizeof(server_msg), 0) ==
                                                 sizeof(server_msg)) {
+                                                cse4589_print_and_log("[RELAYED:SUCCESS]\n");
                                                 cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n",
                                                                       sender_client_ip, i->ip, server_msg.data);
+                                                cse4589_print_and_log("[RELAYED:END]\n");
                                                 strcpy (client_msg.cmd, "send_success");
                                                 // Maybe we should do some error-handling here as well
                                                 if (send (sock_index, &client_msg, sizeof (client_msg), 0) ==
@@ -723,9 +729,7 @@ void client(char *port) {
                                 cse4589_print_and_log("[SEND:ERROR]\n");
                                 cse4589_print_and_log("[SEND:END]\n");
                             } else if (!strcmp(msg_rcvd.cmd, "relayed_msg")) {
-                                cse4589_print_and_log("[RELAYED:SUCCESS]\n");
                                 cout<<"Received message : "<<msg_rcvd.data<<endl;
-                                cse4589_print_and_log("[RELAYED:END]\n");
                             }
                         }
                     }
