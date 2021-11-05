@@ -397,7 +397,7 @@ void server(char *port) {
                                     cout.flush();
                                 }
                             } else if (!strcmp(client_msg.cmd, "send")) {
-                                bool found_ip = 0;
+                                bool found_ip = 0, target_client_logged_out = 0;
                                 char sender_client_ip[32];
                                 // Who's thr sender?
                                 for (auto k: list_data_ptr) {
@@ -410,9 +410,11 @@ void server(char *port) {
                                 for (auto i: list_data_ptr) {
                                     if (!strcmp(i->ip, client_msg.client_ip)) {
                                         found_ip = 1;
+
                                         i->rcv_msg_count++;
                                         if (!strcmp(i->status, LOGGED_OUT)) {
                                             strcat(i->buffer, client_msg.data);
+                                            target_client_logged_out = 1;
                                             break;
                                         } else {
                                             strcpy(server_msg.cmd, "relayed_msg");
@@ -432,6 +434,8 @@ void server(char *port) {
                                                     break;
                                                 }
                                             }
+                                            cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                            cse4589_print_and_log("[RELAYED:END]\n");
                                             strcpy (client_msg.cmd, "send_failure");
                                             // Maybe we should do some error-handling here as well
                                             send (sock_index, &client_msg, sizeof (client_msg), 0);
@@ -441,6 +445,15 @@ void server(char *port) {
                                 }
                                 if (!found_ip) {
                                     cout<<"Couldn't find a client with IP - "<<client_msg.client_ip<<endl;
+                                    cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                    cse4589_print_and_log("[RELAYED:END]\n");
+                                    strcpy (client_msg.cmd, "send_failure");
+                                    // Maybe we should do some error-handling here as well
+                                    send (sock_index, &client_msg, sizeof (client_msg), 0);
+                                } else if (target_client_logged_out) {
+                                    cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                    cout<<"The target client with IP "<<client_msg.client_ip<<" is logged out."<<endl;
+                                    cse4589_print_and_log("[RELAYED:END]\n");
                                     strcpy (client_msg.cmd, "send_failure");
                                     // Maybe we should do some error-handling here as well
                                     send (sock_index, &client_msg, sizeof (client_msg), 0);
@@ -547,6 +560,12 @@ void client(char *port) {
                             cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
+                            if (!logged_in) {
+                                cse4589_print_and_log("[LIST:ERROR]\n");
+                                cout<<"You need to be logged in to execute this command!"<<endl;
+                                cse4589_print_and_log("[LIST:END]\n");
+                                continue;
+                            }
                             int client_count = 0;
                             for (auto i: list_data_ptr) {
                                 if (i->id == 0) {
@@ -593,7 +612,7 @@ void client(char *port) {
                                 cse4589_print_and_log("[LOGIN:END]\n");
                                 continue;
                             }
-                            // Is valid range of ports >
+                            // Is valid range of ports ?
                             if (atoi(server_port) < 1 || atoi(server_port) > 65535) {
                                 error = 1;
                             }
@@ -675,7 +694,9 @@ void client(char *port) {
 
                         } else if (!strcmp(command, "LOGOUT")) {
                             if (!logged_in) {
+                                cse4589_print_and_log("[SEND:ERROR]\n");
                                 cout<<"Not logged in!"<<endl;
+                                cse4589_print_and_log("[SEND:END]\n");
                                 continue;
                             }
                             // Tell server we're logging out.
