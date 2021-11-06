@@ -291,6 +291,7 @@ void server(char *port) {
                     }
                     /* Check if new client is requesting connection */
                     else if (sock_index == server_socket) {
+                        bool re_logon = 0;
                         caddr_len = sizeof(client_addr);
                         fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t * ) & caddr_len);
                         if (fdaccept < 0)
@@ -313,10 +314,20 @@ void server(char *port) {
                         // Initialize a list entry for this client
                         int client_count = 0;
                         for (auto i: list_data_ptr) {
-                            if (i->id == 0 || !strcmp(i->ip, client_ip)) {
+                            if (!strcmp(i->ip, client_ip)) {
+                                re_logon = 1;
                                 break;
                             }
                             client_count++;
+                        }
+                        if (!re_logon) {
+                            client_count = 0;
+                            for (auto i: list_data_ptr) {
+                                if (i->id == 0) {
+                                    break;
+                                }
+                                client_count++;
+                            }
                         }
 
                         list_data_ptr[client_count]->id = client_count + 1;
