@@ -386,9 +386,6 @@ void server(char *port) {
                                 strcpy(server_msg.cmd, "refresh_data");
                                 int counter = 0;
                                 for (auto i : list_data_ptr) {
-                                    if(i->id == 0 || strcmp(i->status, LOGGED_IN)) {
-                                        continue;
-                                    }
                                     server_msg.list_entries[counter] = *i;
                                     counter++;
                                 }
