@@ -313,7 +313,7 @@ void server(char *port) {
                         // Initialize a list entry for this client
                         int client_count = 0;
                         for (auto i: list_data_ptr) {
-                            if (i->id == 0) {
+                            if (i->id == 0 || !strcmp(i->ip, client_ip)) {
                                 break;
                             }
                             client_count++;
