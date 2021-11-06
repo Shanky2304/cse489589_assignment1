@@ -77,7 +77,7 @@ struct list_data
     int rcv_msg_count;
     int snd_msg_count;
     char status[20];
-
+    char buffer[2561];
 };
 
 struct list_data *list_data_ptr[5];
@@ -192,6 +192,8 @@ void server(char *port) {
     for(int i = 0; i < 5; i++) {
         list_data_ptr[i] = (struct list_data *) malloc(sizeof(struct list_data));
         list_data_ptr[i]->id = 0;
+        list_data_ptr[i]->snd_msg_count = 0;
+        list_data_ptr[i]->rcv_msg_count = 0;
     }
 
     /* Zero select FD sets */
@@ -233,7 +235,7 @@ void server(char *port) {
                         cmd[strcspn(cmd, "\n")] = 0;
                         // Need to use strtok() to parse the command and arguments separately
                         char *command = strtok(cmd, " ");
-                        cout << "Command = " << command << endl;
+                        // cout << "Command = " << command << endl;
                         cout.flush();
 
                         // Check command & invoke the apt method below
@@ -263,6 +265,7 @@ void server(char *port) {
                                 }
                                 cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
                                 idx ++;
+                                fflush(stdout);
                             }
                             cse4589_print_and_log("[LIST:END]\n");
                             fflush(stdout);
@@ -288,6 +291,7 @@ void server(char *port) {
                     }
                     /* Check if new client is requesting connection */
                     else if (sock_index == server_socket) {
+                        bool re_logon = 0;
                         caddr_len = sizeof(client_addr);
                         fdaccept = accept(server_socket, (struct sockaddr *) &client_addr, (socklen_t * ) & caddr_len);
                         if (fdaccept < 0)
@@ -310,10 +314,20 @@ void server(char *port) {
                         // Initialize a list entry for this client
                         int client_count = 0;
                         for (auto i: list_data_ptr) {
-                            if (i->id == 0) {
+                            if (!strcmp(i->ip, client_ip)) {
+                                re_logon = 1;
                                 break;
                             }
                             client_count++;
+                        }
+                        if (!re_logon) {
+                            client_count = 0;
+                            for (auto i: list_data_ptr) {
+                                if (i->id == 0) {
+                                    break;
+                                }
+                                client_count++;
+                            }
                         }
 
                         list_data_ptr[client_count]->id = client_count + 1;
@@ -331,9 +345,6 @@ void server(char *port) {
                         strcpy(server_msg.cmd, "login_list");
                         int counter = 0;
                         for (auto i : list_data_ptr) {
-                            if(i->id == 0 || strcmp(i->status, LOGGED_IN)) {
-                                continue;
-                            }
                             server_msg.list_entries[counter] = *i;
                             counter++;
                         }
@@ -345,13 +356,19 @@ void server(char *port) {
                     /* Read from existing clients */
                     else {
                         /* Initialize buffer to receieve response */
-//                        char *buffer = (char *) malloc(sizeof(char) * BUFFER_SIZE);
-//                        memset(buffer, '\0', BUFFER_SIZE);
                         memset(&client_msg, '\0', sizeof (client_msg));
 
                         if (recv(sock_index, &client_msg, sizeof (client_msg), 0) <= 0) {
                             close(sock_index);
                             printf("Remote Host terminated connection!\n");
+
+                            // Update logged out status
+                            for (auto i : list_data_ptr) {
+                                if (i->socket == sock_index) {
+                                    strcpy(i->status, LOGGED_OUT);
+                                    break;
+                                }
+                            }
 
                             /* Remove from watched list */
                             FD_CLR(sock_index, &master_list);
@@ -378,15 +395,74 @@ void server(char *port) {
                                 strcpy(server_msg.cmd, "refresh_data");
                                 int counter = 0;
                                 for (auto i : list_data_ptr) {
-                                    if(i->id == 0 || strcmp(i->status, LOGGED_IN)) {
-                                        continue;
-                                    }
                                     server_msg.list_entries[counter] = *i;
                                     counter++;
                                 }
                                 if(send(sock_index, &server_msg, sizeof(server_msg), 0) == sizeof(server_msg)) {
                                     cout<<"Sent refresh_data to the client."<<endl;
                                     cout.flush();
+                                }
+                            } else if (!strcmp(client_msg.cmd, "send")) {
+                                bool found_ip = 0, target_client_logged_out = 0;
+                                char sender_client_ip[32];
+                                // Who's thr sender?
+                                for (auto k: list_data_ptr) {
+                                    if (k->socket == sock_index) {
+                                        strcpy(sender_client_ip, k->ip);
+                                        k->snd_msg_count++;
+                                    }
+                                }
+                                // Who's the receiver?
+                                for (auto i: list_data_ptr) {
+                                    if (!strcmp(i->ip, client_msg.client_ip)) {
+                                        found_ip = 1;
+
+                                        i->rcv_msg_count++;
+                                        if (!strcmp(i->status, LOGGED_OUT)) {
+                                            strcat(i->buffer, client_msg.data);
+                                            target_client_logged_out = 1;
+                                            break;
+                                        } else {
+                                            strcpy(server_msg.cmd, "relayed_msg");
+                                            strcpy(server_msg.sender_ip, sender_client_ip);
+                                            strcpy(server_msg.data, client_msg.data);
+                                            if (send(i->socket, &server_msg, sizeof(server_msg), 0) ==
+                                                sizeof(server_msg)) {
+                                                cse4589_print_and_log("[RELAYED:SUCCESS]\n");
+                                                cse4589_print_and_log("msg from:%s, to:%s\n[msg]:%s\n",
+                                                                      sender_client_ip, i->ip, server_msg.data);
+                                                cse4589_print_and_log("[RELAYED:END]\n");
+                                                strcpy (client_msg.cmd, "send_success");
+                                                fflush(stdout);
+                                                // Maybe we should do some error-handling here as well
+                                                if (send (sock_index, &client_msg, sizeof (client_msg), 0) ==
+                                                sizeof (client_msg)) {
+                                                    break;
+                                                }
+                                            }
+                                            cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                            cse4589_print_and_log("[RELAYED:END]\n");
+                                            strcpy (client_msg.cmd, "send_failure");
+                                            // Maybe we should do some error-handling here as well
+                                            send (sock_index, &client_msg, sizeof (client_msg), 0);
+                                            break;
+                                        }
+                                    }
+                                }
+                                if (!found_ip) {
+                                    cout<<"Couldn't find a client with IP - "<<client_msg.client_ip<<endl;
+                                    cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                    cse4589_print_and_log("[RELAYED:END]\n");
+                                    strcpy (client_msg.cmd, "send_failure");
+                                    // Maybe we should do some error-handling here as well
+                                    send (sock_index, &client_msg, sizeof (client_msg), 0);
+                                } else if (target_client_logged_out) {
+                                    cse4589_print_and_log("[RELAYED:ERROR]\n");
+                                    cout<<"The target client with IP "<<client_msg.client_ip<<" is logged out."<<endl;
+                                    cse4589_print_and_log("[RELAYED:END]\n");
+                                    strcpy (client_msg.cmd, "send_failure");
+                                    // Maybe we should do some error-handling here as well
+                                    send (sock_index, &client_msg, sizeof (client_msg), 0);
                                 }
                             }
                         }
@@ -490,6 +566,12 @@ void client(char *port) {
                             cse4589_print_and_log("PORT:%s\n", port);
                             cse4589_print_and_log("[%s:END]\n", command);
                         } else if (!strcmp(command, "LIST")) {
+                            if (!logged_in) {
+                                cse4589_print_and_log("[LIST:ERROR]\n");
+                                cout<<"You need to be logged in to execute this command!"<<endl;
+                                cse4589_print_and_log("[LIST:END]\n");
+                                continue;
+                            }
                             int client_count = 0;
                             for (auto i: list_data_ptr) {
                                 if (i->id == 0) {
@@ -507,6 +589,7 @@ void client(char *port) {
                                 }
                                 cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
                                 idx ++;
+                                fflush(stdout);
                             }
                             cse4589_print_and_log("[LIST:END]\n");
                             fflush(stdout);
@@ -536,7 +619,7 @@ void client(char *port) {
                                 cse4589_print_and_log("[LOGIN:END]\n");
                                 continue;
                             }
-                            // Is valid range of ports >
+                            // Is valid range of ports ?
                             if (atoi(server_port) < 1 || atoi(server_port) > 65535) {
                                 error = 1;
                             }
@@ -566,12 +649,50 @@ void client(char *port) {
                             cse4589_print_and_log("[LOGIN:SUCCESS]\n");
 
                         } else if (!strcmp(command, "REFRESH")) {
+                            if (!logged_in){
+                                cout<<"You need to be logged in to execute this command!"<<endl;
+                                cse4589_print_and_log("[REFRESH:ERROR]\n");
+                                cse4589_print_and_log("[REFRESH:END]\n");
+                                continue;
+                            }
                             strcpy(client_msg.cmd,"refresh");
                             if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg))
                                 cse4589_print_and_log("[REFRESH:SUCCESS]\n");
 
                         } else if (!strcmp(command, "SEND")) {
+                            if (!logged_in) {
+                                cout<<"You need to be logged in to execute this command!"<<endl;
+                                cse4589_print_and_log("[SEND:ERROR]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                                continue;
+                            }
+                            bool error = 0;
+                            char *client_ip = strtok_r(NULL, " ", &saved_context);
+                            char *data = strtok_r(NULL, " ", &saved_context);
 
+                            if (client_ip == NULL || data == NULL) {
+                                cout<<"Incorrect Usage: SEND [client IP] [client msg]"<<endl;
+                                cse4589_print_and_log("[SEND:ERROR]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                                continue;
+                            }
+                            if (!isvalidIP(client_ip)) {
+                                perror("Invalid IP!");
+                                cse4589_print_and_log("[SEND:ERROR]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                                continue;
+                            }
+                            cout.flush();
+                            strcpy(client_msg.cmd, "send");
+                            strcpy(client_msg.client_ip, client_ip);
+                            strcpy(client_msg.data, data);
+                            if (send(server_sock, &client_msg, sizeof (client_msg), 0) != sizeof (client_msg)) {
+                                cout<<"send failed!"<<endl;
+                                cout.flush();
+                                cse4589_print_and_log("[SEND:ERROR]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                                fflush(stdout);
+                            }
                         } else if (!strcmp(command, "BROADCAST")) {
 
                         } else if (!strcmp(command, "BLOCK")) {
@@ -580,7 +701,9 @@ void client(char *port) {
 
                         } else if (!strcmp(command, "LOGOUT")) {
                             if (!logged_in) {
+                                cse4589_print_and_log("[SEND:ERROR]\n");
                                 cout<<"Not logged in!"<<endl;
+                                cse4589_print_and_log("[SEND:END]\n");
                                 continue;
                             }
                             // Tell server we're logging out.
@@ -609,6 +732,9 @@ void client(char *port) {
                                 }
                                 cse4589_print_and_log("[EXIT:END]\n");
                             }
+                            // Free up dynamically allocated mem
+                            for (auto i : list_data_ptr)
+                                free(i);
                             exit(0);
                         } else {
                             // Unidentified command
@@ -623,18 +749,48 @@ void client(char *port) {
 
                             if(!strcmp (msg_rcvd.cmd, "login_list")) {
                                 // Refresh LIST data
+                                for (auto k : list_data_ptr) {
+                                    k->id = 0;
+                                }
+                                for (auto k : msg_rcvd.list_entries) {
+                                    cout<<"Id : "<<k.id<<" name : "<<k.host_name<<" status : "<<k.status<<endl;
+                                    cout.flush();
+                                }
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
-                                    *list_data_ptr[client_count++] = i;
+                                    *list_data_ptr[client_count] = i;
+                                    client_count++;
                                 }
                                 cse4589_print_and_log("[LOGIN:END]\n");
                             } else if (!strcmp (msg_rcvd.cmd, "refresh_data")) {
                                 // Refresh LIST data
+                                for (auto k : list_data_ptr) {
+                                    k->id = 0;
+                                }
+                                for (auto k : msg_rcvd.list_entries) {
+                                    cout<<"Id : "<<k.id<<" name : "<<k.host_name<<" status : "<<k.status<<endl;
+                                    cout.flush();
+                                }
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
-                                    *list_data_ptr[client_count++] = i;
+                                    *list_data_ptr[client_count] = i;
+                                    client_count++;
                                 }
                                 cse4589_print_and_log("[REFRESH:END]\n");
+                            } else if (!strcmp(msg_rcvd.cmd, "send_success")) {
+                                // SEND success response from server
+                                cse4589_print_and_log("[SEND:SUCCESS]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                            } else if (!strcmp(msg_rcvd.cmd, "send_failure")) {
+                                // SEND success response from server
+                                cse4589_print_and_log("[SEND:ERROR]\n");
+                                cse4589_print_and_log("[SEND:END]\n");
+                            } else if (!strcmp(msg_rcvd.cmd, "relayed_msg")) {
+                                cse4589_print_and_log("[RECEIVED:SUCCESS]\n");
+                                cse4589_print_and_log("msg from:%s\n[msg]:%s\n",
+                                                      msg_rcvd.sender_ip, msg_rcvd.data);
+                                cse4589_print_and_log("[RECEIVED:END]\n");
+                                fflush(stdout);
                             }
                         }
                     }
