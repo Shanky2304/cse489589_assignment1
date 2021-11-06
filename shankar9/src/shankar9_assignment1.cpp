@@ -235,7 +235,7 @@ void server(char *port) {
                         cmd[strcspn(cmd, "\n")] = 0;
                         // Need to use strtok() to parse the command and arguments separately
                         char *command = strtok(cmd, " ");
-                        cout << "Command = " << command << endl;
+                        // cout << "Command = " << command << endl;
                         cout.flush();
 
                         // Check command & invoke the apt method below
@@ -725,6 +725,9 @@ void client(char *port) {
                                 }
                                 cse4589_print_and_log("[EXIT:END]\n");
                             }
+                            // Free up dynamically allocated mem
+                            for (auto i : list_data_ptr)
+                                free(i);
                             exit(0);
                         } else {
                             // Unidentified command
@@ -739,16 +742,24 @@ void client(char *port) {
 
                             if(!strcmp (msg_rcvd.cmd, "login_list")) {
                                 // Refresh LIST data
+                                for (auto k : list_data_ptr) {
+                                    k->id = 0;
+                                }
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
-                                    *list_data_ptr[client_count++] = i;
+                                    *list_data_ptr[client_count] = i;
+                                    client_count++;
                                 }
                                 cse4589_print_and_log("[LOGIN:END]\n");
                             } else if (!strcmp (msg_rcvd.cmd, "refresh_data")) {
                                 // Refresh LIST data
+                                for (auto k : list_data_ptr) {
+                                    k->id = 0;
+                                }
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
-                                    *list_data_ptr[client_count++] = i;
+                                    *list_data_ptr[client_count] = i;
+                                    client_count++;
                                 }
                                 cse4589_print_and_log("[REFRESH:END]\n");
                             } else if (!strcmp(msg_rcvd.cmd, "send_success")) {
