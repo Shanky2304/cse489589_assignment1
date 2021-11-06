@@ -739,6 +739,10 @@ void client(char *port) {
                                 for (auto k : list_data_ptr) {
                                     k->id = 0;
                                 }
+                                for (auto k : msg_rcvd.list_entries) {
+                                    cout<<"Id : "<<k.id<<" name : "<<k.host_name<<" status : "<<k.status<<endl;
+                                    cout.flush();
+                                }
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
                                     *list_data_ptr[client_count] = i;
