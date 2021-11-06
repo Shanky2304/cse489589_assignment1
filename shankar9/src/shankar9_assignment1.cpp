@@ -265,6 +265,7 @@ void server(char *port) {
                                 }
                                 cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
                                 idx ++;
+                                fflush(stdout);
                             }
                             cse4589_print_and_log("[LIST:END]\n");
                             fflush(stdout);
@@ -577,6 +578,7 @@ void client(char *port) {
                                 }
                                 cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
                                 idx ++;
+                                fflush(stdout);
                             }
                             cse4589_print_and_log("[LIST:END]\n");
                             fflush(stdout);
