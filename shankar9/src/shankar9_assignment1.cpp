@@ -293,6 +293,7 @@ void server(char *port) {
                             }
                             cse4589_print_and_log("[STATISTICS:END]\n");
                         } else if (!strcmp(command, "BLOCKED")) {
+                        //COMMENTED OUT ENTIRE BLOCK OF CODE FOR STABILITY, BECAUSE IT COULD INCORRECTLY EFFECT STATISTICS OF MESSAGES SENT/RECEIVED  
                              // Need to figure out how to work with 2nd argument here maybe strtok()
                         //     int blocked_client_count = 0;
                         //     for (auto i: list_data_ptr) {
@@ -502,6 +503,7 @@ void server(char *port) {
                                     send (sock_index, &client_msg, sizeof (client_msg), 0);
                                 }
                             }
+                            //COMMENTED OUT ENTIRE BLOCK OF CODE FOR STABILITY, BECAUSE IT COULD INCORRECTLY EFFECT STATISTICS OF MESSAGES SENT/RECEIVED  
                             // else if (!strcmp(client_msg.cmd, "broadcast")) {
                             //     char sender_client_ip[32];
                             //     // Who's thr sender?
@@ -792,6 +794,7 @@ void client(char *port) {
                                 fflush(stdout);
                             }
                         } else if (!strcmp(command, "BROADCAST")) {
+                            //COMMENTED OUT ENTIRE BLOCK OF CODE FOR STABILITY, BECAUSE IT COULD INCORRECTLY EFFECT STATISTICS OF MESSAGES SENT/RECEIVED 
                             // if (!logged_in) {
                             //     cout<<"You need to be logged in to execute this command!"<<endl;
                             //     cse4589_print_and_log("[BROADCAST:ERROR]\n");
