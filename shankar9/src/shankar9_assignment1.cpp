@@ -196,6 +196,15 @@ void server(char *port) {
         list_data_ptr[i]->rcv_msg_count = 0;
     }
 
+     //init for block client list
+    // for(int i = 0; i < 5; i++) {
+    //     block_ptr[i] = (struct block_list_client *) malloc(sizeof(struct block_list_client));
+    //     block_ptr[i]-> blocked_client1_ip  = "empty";
+    //     block_ptr[i]-> blocked_client2_ip  = "empty";
+    //     block_ptr[i]-> blocked_client3_ip  = "empty";
+    //     block_ptr[i]-> blocked_client4_ip  = "empty";
+    // }
+
     /* Zero select FD sets */
     FD_ZERO(&master_list);
     FD_ZERO(&watch_list);
@@ -283,6 +292,32 @@ void server(char *port) {
                             cse4589_print_and_log("[STATISTICS:END]\n");
                         } else if (!strcmp(command, "BLOCKED")) {
                             // Need to figure out how to work with 2nd argument here maybe strtok()
+                        //     int blocked_client_count = 0;
+                        //     for (auto i: list_data_ptr) {
+                        //         if (i-> id == 0) {
+                        //             continue;
+                        //         }
+                        //         blocked_client_count++;
+                        //     }
+                        //     sort(list_data_ptr, list_data_ptr + blocked_client_count + 1, compare_list_data);
+
+                        //     cse4589_print_and_log("[BLOCKED:SUCCESS]\n");
+                        //     int idx = 1;
+                        //     for(auto i : list_data_ptr) {
+                        //         if (i-> list_data_ptr == 0) {
+                        //             continue;
+                        //         }
+                        //         cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
+                        //         idx ++;
+                        //         fflush(stdout);
+                        //     }
+                        //     cse4589_print_and_log("[BLOCKED:END]\n");
+                        //     fflush(stdout);
+                        // } else {
+                        //     // Unidentified command
+                        //     cout << "Unidentified command, ignoring..." << endl;
+                        // }
+                        // free(cmd);
                         } else {
                             // Unidentified command
                             cout << "Unidentified command, ignoring..." << endl;
@@ -465,6 +500,53 @@ void server(char *port) {
                                     send (sock_index, &client_msg, sizeof (client_msg), 0);
                                 }
                             }
+                             // else if (!strcmp(client_msg.cmd, "broadcast")) {
+                            //     char sender_client_ip[32];
+                            //     // Who's thr sender?
+                            //     for (auto k: list_data_ptr) {
+                            //         if (k->socket == sock_index) {
+                            //             strcpy(sender_client_ip, k->ip);
+                            //             k->snd_msg_count++;
+                            //         }
+                            //     }
+                            //     // Who's the receiver?
+                            //     for (auto i: list_data_ptr) {
+                            //         if (!strcmp(i->ip, client_msg.client_ip)) {
+                            //             found_ip = 1;
+
+                            //             i->rcv_msg_count++;
+                            //             if (!strcmp(i->status, LOGGED_OUT)) {
+                            //                 strcat(i->buffer, client_msg.data);
+                            //                 target_client_logged_out = 1;
+                            //                 break;
+                            //             } else {
+                            //                 strcpy(server_msg.cmd, "relayed_msg");
+                            //                 strcpy(server_msg.sender_ip, sender_client_ip);
+                            //                 strcpy(server_msg.data, client_msg.data);
+                            //                 if (send(i->socket, &server_msg, sizeof(server_msg), 0) ==
+                            //                     sizeof(server_msg)) {
+                            //                     cse4589_print_and_log("[RELAYED:SUCCESS]\n");
+                            //                     cse4589_print_and_log("msg from:%s, to:255.255.255.255\n[msg]:%s\n",
+                            //                                           sender_client_ip, server_msg.data);
+                            //                     cse4589_print_and_log("[RELAYED:END]\n");
+                            //                     strcpy (client_msg.cmd, "send_success");
+                            //                     fflush(stdout);
+                            //                     // Maybe we should do some error-handling here as well
+                            //                     if (send (sock_index, &client_msg, sizeof (client_msg), 0) ==
+                            //                     sizeof (client_msg)) {
+                            //                         break;
+                            //                     }
+                            //                 }
+                            //                 cse4589_print_and_log("[RELAYED:ERROR]\n");
+                            //                 cse4589_print_and_log("[RELAYED:END]\n");
+                            //                 strcpy (client_msg.cmd, "send_failure");
+                            //                 // Maybe we should do some error-handling here as well
+                            //                 send (sock_index, &client_msg, sizeof (client_msg), 0);
+                            //                 break;
+                            //             }
+                            //         }
+                            //     }
+                            // }
                         }
                     }
                 }
@@ -694,8 +776,61 @@ void client(char *port) {
                                 fflush(stdout);
                             }
                         } else if (!strcmp(command, "BROADCAST")) {
+                            // if (!logged_in) {
+                            //     cout<<"You need to be logged in to execute this command!"<<endl;
+                            //     cse4589_print_and_log("[BROADCAST:ERROR]\n");
+                            //     cse4589_print_and_log("[BROADCAST:END]\n");
+                            //     continue;
+                            // }
+                            // bool error = 0;
+                            // char *client_ip = strtok_r(NULL, " ", &saved_context);
+                            // char *data = strtok_r(NULL, " ", &saved_context);
 
+                            // if (client_ip == NULL || data == NULL) {
+                            //     cout<<"Incorrect Usage: BROADCAST [client IP] [client msg]"<<endl;
+                            //     cse4589_print_and_log("[BROADCAST:ERROR]\n");
+                            //     cse4589_print_and_log("[BROADCAST:END]\n");
+                            //     continue;
+                            // }
+                            // if (!isvalidIP(client_ip)) {
+                            //     perror("Invalid IP!");
+                            //     cse4589_print_and_log("[BROADCAST:ERROR]\n");
+                            //     cse4589_print_and_log("[BROADCAST:END]\n");
+                            //     continue;
+                            // }
+                            // cout.flush();
+                            // strcpy(client_msg.cmd, "broadcast");
+                            // strcpy(client_msg.client_ip, client_ip);
+                            // strcpy(client_msg.data, data);
+                            // if (send(server_sock, &client_msg, sizeof (client_msg), 0) != sizeof (client_msg)) {
+                            //     cout<<"send failed!"<<endl;
+                            //     cout.flush();
+                            //     cse4589_print_and_log("[BROADCAST:ERROR]\n");
+                            //     cse4589_print_and_log("[BROADCAST:END]\n");
+                            //     fflush(stdout);
+                            // }
                         } else if (!strcmp(command, "BLOCK")) {
+                            // if (!logged_in) {
+                            //     cout<<"You need to be logged in to execute this command!"<<endl;
+                            //     cse4589_print_and_log("[BLOCK:ERROR]\n");
+                            //     cse4589_print_and_log("[BLOCK:END]\n");
+                            //     continue;
+                            // }
+                            // bool error = 0;
+                            // char *client_ip = strtok_r(NULL, " ", &saved_context);
+                            // //
+                            // if (client_ip == NULL) {
+                            //     cout<<"Incorrect Usage: BLOCK [client IP]"<<endl;
+                            //     cse4589_print_and_log("[BLOCK:ERROR]\n");
+                            //     cse4589_print_and_log("[BLOCK:END]\n");
+                            //     continue;
+                            // }
+                            // if (!isvalidIP(client_ip)) {
+                            //     perror("Invalid IP!");
+                            //     cse4589_print_and_log("[BLOCK:ERROR]\n");
+                            //     cse4589_print_and_log("[BLOCK:END]\n");
+                            //     continue;
+                            // }
 
                         } else if (!strcmp(command, "UNBLOCK")) {
 
