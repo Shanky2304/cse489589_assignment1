@@ -1,7 +1,9 @@
 /**
  * @shankar9_assignment1
- * @author  Vivek Shankar <shankar9@buffalo.edu>
- * @version 1.0
+ * @author  Vivek Shankar <shankar9@buffalo.edu>,
+ * @author  William Hiltz <wrhiltz@buffalo.edu>,
+ * @author  Yutian Yan <yutianya@buffalo.edu>
+ * @version 1.1
  *
  * @section LICENSE
  *
@@ -603,8 +605,10 @@ void client(char *port) {
                             //cout.flush(); 
 
                             if (server_ip == NULL || server_port == NULL) {
-                              cout<<"Incorrect Usage: LOGIN [server IP] [server port]"<<endl;
-                              continue;
+                                cse4589_print_and_log("[LOGIN:ERROR]\n");
+                                cout<<"Incorrect Usage: LOGIN [server IP] [server port]"<<endl;
+                                cse4589_print_and_log("[LOGIN:END]\n");
+                                continue;
                             }
                             // Validate port & IP
                             size_t length = strlen(server_port);
@@ -614,8 +618,8 @@ void client(char *port) {
                                 }
                             }
                             if (error) {
-                                perror("Invalid port, contains non-digits. Try again.");
                                 cse4589_print_and_log("[LOGIN:ERROR]\n");
+                                perror("Invalid port, contains non-digits. Try again.");
                                 cse4589_print_and_log("[LOGIN:END]\n");
                                 continue;
                             }
@@ -647,22 +651,34 @@ void client(char *port) {
                             client_head_socket=server_sock;
                             logged_in=1;
                             cse4589_print_and_log("[LOGIN:SUCCESS]\n");
+                            cse4589_print_and_log("[LOGIN:END]\n");
 
                         } else if (!strcmp(command, "REFRESH")) {
-                            if (!logged_in){
-                                cout<<"You need to be logged in to execute this command!"<<endl;
+                            if (!logged_in) {
                                 cse4589_print_and_log("[REFRESH:ERROR]\n");
+                                cout << "You need to be logged in to execute this command!" << endl;
                                 cse4589_print_and_log("[REFRESH:END]\n");
                                 continue;
                             }
-                            strcpy(client_msg.cmd,"refresh");
-                            if (send(server_sock, &client_msg, sizeof (client_msg), 0) == sizeof (client_msg))
+                            strcpy(client_msg.cmd, "refresh");
+                            if (send(server_sock, &client_msg, sizeof(client_msg), 0) == sizeof(client_msg))
+                            {
                                 cse4589_print_and_log("[REFRESH:SUCCESS]\n");
-
+                                int idx = 1;
+                                for(auto i : list_data_ptr) {
+                                    if (i->id == 0 || strcmp(i->status, LOGGED_IN)) {
+                                        continue;
+                                    }
+                                    cse4589_print_and_log ("%-5d%-35s%-20s%-8d\n", idx, i->host_name, i->ip, i->port);
+                                    idx ++;
+                                    fflush(stdout);
+                                }
+                                cse4589_print_and_log("[REFRESH:END]\n");
+                            }
                         } else if (!strcmp(command, "SEND")) {
                             if (!logged_in) {
-                                cout<<"You need to be logged in to execute this command!"<<endl;
                                 cse4589_print_and_log("[SEND:ERROR]\n");
+                                cout<<"You need to be logged in to execute this command!"<<endl;
                                 cse4589_print_and_log("[SEND:END]\n");
                                 continue;
                             }
@@ -671,14 +687,14 @@ void client(char *port) {
                             char *data = strtok_r(NULL, " ", &saved_context);
 
                             if (client_ip == NULL || data == NULL) {
-                                cout<<"Incorrect Usage: SEND [client IP] [client msg]"<<endl;
                                 cse4589_print_and_log("[SEND:ERROR]\n");
+                                cout<<"Incorrect Usage: SEND [client IP] [client msg]"<<endl;
                                 cse4589_print_and_log("[SEND:END]\n");
                                 continue;
                             }
                             if (!isvalidIP(client_ip)) {
-                                perror("Invalid IP!");
                                 cse4589_print_and_log("[SEND:ERROR]\n");
+                                perror("Invalid IP!");
                                 cse4589_print_and_log("[SEND:END]\n");
                                 continue;
                             }
@@ -687,9 +703,9 @@ void client(char *port) {
                             strcpy(client_msg.client_ip, client_ip);
                             strcpy(client_msg.data, data);
                             if (send(server_sock, &client_msg, sizeof (client_msg), 0) != sizeof (client_msg)) {
+                                cse4589_print_and_log("[SEND:ERROR]\n");
                                 cout<<"send failed!"<<endl;
                                 cout.flush();
-                                cse4589_print_and_log("[SEND:ERROR]\n");
                                 cse4589_print_and_log("[SEND:END]\n");
                                 fflush(stdout);
                             }
@@ -767,15 +783,16 @@ void client(char *port) {
                                 for (auto k : list_data_ptr) {
                                     k->id = 0;
                                 }
-                                for (auto k : msg_rcvd.list_entries) {
+                                /*for (auto k : msg_rcvd.list_entries) {
                                     cout<<"Id : "<<k.id<<" name : "<<k.host_name<<" status : "<<k.status<<endl;
                                     cout.flush();
-                                }
+                                }*/
                                 int client_count = 0;
                                 for (auto i : msg_rcvd.list_entries) {
                                     *list_data_ptr[client_count] = i;
                                     client_count++;
                                 }
+                                cse4589_print_and_log("[REFRESH:SUCCESS]\n");
                                 cse4589_print_and_log("[REFRESH:END]\n");
                             } else if (!strcmp(msg_rcvd.cmd, "send_success")) {
                                 // SEND success response from server
